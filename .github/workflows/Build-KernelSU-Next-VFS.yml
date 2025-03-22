@@ -1,4 +1,4 @@
-name: New KernelSU Next SUSFS 12R
+name: New KernelSU Next VFS
 on:
   workflow_dispatch:
     inputs:
