@@ -152,16 +152,11 @@ jobs:
           export LTO=thin
           ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
 
-      - name: Find Image
-        run: |
-          cd kernel_workspace
-          find / -name Image
-
       - name: Make AnyKernel3
         run: |
          git clone https://github.com/Numbersf/AnyKernel3 --depth=1
          rm -rf ./AnyKernel3/.git
-         cp "$(find / -name 'Image' -print -quit)" ./AnyKernel3/
+         cp "$(find kernel_workspace/ -name 'Image' -print -quit)" ./AnyKernel3/
 
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
