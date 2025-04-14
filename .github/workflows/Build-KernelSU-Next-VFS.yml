@@ -151,6 +151,7 @@ jobs:
           export CCACHE_EXEC=/usr/bin/ccache
           export LTO=thin
           ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+          find -name Image
 
       - name: Make AnyKernel3
         run: |
