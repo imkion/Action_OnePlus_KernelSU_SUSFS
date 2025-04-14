@@ -155,7 +155,7 @@ jobs:
       - name: Find Image
         run: |
           cd kernel_workspace
-          find -name Image
+          find / -name Image
 
       - name: Make AnyKernel3
         run: |
