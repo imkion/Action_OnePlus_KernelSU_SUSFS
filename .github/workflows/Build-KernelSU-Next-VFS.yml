@@ -1,4 +1,4 @@
-name: New KernelSU Next VFS
+name: Build KernelSU Next VFS
 on:
   workflow_dispatch:
     inputs:
@@ -26,10 +26,15 @@ on:
         description: "编译方式"
         required: true
         default: 'gki'
-      Path:
-        description: "Image路径"
+      Path_ENABLED:
+        description: "自定义Image路径"
         required: true
-        default: 'kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/Image'
+        type: boolean
+        default: false
+      Path:
+        description: "Image路径(如不启用则不填写)"
+        required: true
+        default: ''
       KSUNEXT_ENABLED:
         description: "添加 KSU Next"
         required: true
@@ -155,9 +160,21 @@ jobs:
           export CCACHE_EXEC=/usr/bin/ccache
           export LTO=thin
           ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+
+      - name: Find Image
+        run: |
+          cd kernel_workspace
           find -name Image
 
       - name: Make AnyKernel3
+        if: github.event.inputs.Path_ENABLED == 'false'
+        run: |
+         git clone https://github.com/Numbersf/AnyKernel3 --depth=1
+         rm -rf ./AnyKernel3/.git
+         cp kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/Image ./AnyKernel3/
+
+      - name: Make AnyKernel3 (Path)
+        if: github.event.inputs.Path_ENABLED == 'true'
         run: |
          git clone https://github.com/Numbersf/AnyKernel3 --depth=1
          rm -rf ./AnyKernel3/.git
