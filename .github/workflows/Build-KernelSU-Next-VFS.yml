@@ -58,6 +58,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          ls -a
+          ls -a /
           sudo apt update && sudo apt upgrade -y
           sudo apt-get install jq -y
           sudo apt install -y python3 python3-pip git curl patch bc bison flex libssl-dev ccache
@@ -161,7 +163,7 @@ jobs:
         run: |
          git clone https://github.com/Numbersf/AnyKernel3 --depth=1
          rm -rf ./AnyKernel3/.git
-         cp "$(find -name 'Image' -print -quit)" ./AnyKernel3/
+         cp "$(find /root -name 'Image' -print -quit)" ./AnyKernel3/
 
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
