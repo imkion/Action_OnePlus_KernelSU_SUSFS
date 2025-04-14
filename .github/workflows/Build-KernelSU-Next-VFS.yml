@@ -33,7 +33,7 @@ on:
         default: false
       Path:
         description: "Image路径(如不启用则不填写)"
-        required: true
+        required: false
         default: ''
       KSUNEXT_ENABLED:
         description: "添加 KSU Next"
