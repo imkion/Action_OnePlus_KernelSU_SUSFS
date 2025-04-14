@@ -58,8 +58,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          ls -a
-          ls -a /
+          mkdir 123
+          whereis 123
           sudo apt update && sudo apt upgrade -y
           sudo apt-get install jq -y
           sudo apt install -y python3 python3-pip git curl patch bc bison flex libssl-dev ccache
