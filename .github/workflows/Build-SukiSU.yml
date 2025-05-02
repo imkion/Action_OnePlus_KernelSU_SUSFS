@@ -1,4 +1,4 @@
-name: Build SukiSU Build
+name: Build SukiSU
 on:
   workflow_dispatch:
     inputs:
