@@ -1,4 +1,4 @@
-name: Build OnePlus_Kernel
+name: Build SukiSU Build
 on:
   workflow_dispatch:
     inputs:
