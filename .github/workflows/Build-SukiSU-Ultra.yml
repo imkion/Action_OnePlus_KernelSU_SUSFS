@@ -50,16 +50,19 @@ on:
       VFS_patch_ENABLED:
         description: "添加 vfs 补丁"
         required: true
-        type: choice
-        options:
-          - enable
-          - disable
-        default: enable
+        type: boolean
+        default: true
       ZRAM:
         description: "是否启用添加更多的ZRAM算法？"
         required: true
         type: boolean
         default: false
+      BAZEL:
+        description: "是否使用Bazel进行编译？"
+        required: true
+        type: boolean
+        default: false
+        
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -146,20 +149,33 @@ jobs:
           cd kernel_workspace
           git clone https://gitlab.com/shirkneko/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
+          
           cd kernel_platform
-
-          # Copy SUSFS patches
+          echo "正在给内核打susfs补丁"
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+          echo "完成"
 
-          #lz4k
-          #cp -r ../SukiSU_patch/other/lz4k/include/linux/* ./common/include/linux
-          #cp -r ../SukiSU_patch/other/lz4k/lib/* ./common/lib
-          #cp -r ../SukiSU_patch/other/lz4k/crypto/* ./common/crypto
+          if [ "${{ github.event.inputs.ZRAM }}" = "true" ]; then
+            echo "正在给内核打zram补丁"
+            # 添加lz4k
+            cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux
+            cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib
+            cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./common/crypto
+            # lz4k一加优化补丁
+            cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./common/lib/
+            # 添加zstdn
+            cp -r ../SukiSU_patch/other/zram/zstdn ./common/lib/
+          fi
           
-          echo "正在给内核打susfs补丁"
+          # 应用补丁
           cd ./common
+          
+          # 设置参数
+          sed -i 's/-32,12 +32,38/-32,11 +32,37/g' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
+          sed -i '/#include <trace\/hooks\/fs.h>/d' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
+          
           patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
           echo "完成"
           
@@ -172,7 +188,7 @@ jobs:
           #patch -p1 -F 3 < 69_hide_stuff.patch
          
       - name: Apply New Hooks Patches
-        if: ${{ github.event.inputs.VFS_patch_ENABLED == 'enable' }}
+        if: ${{ github.event.inputs.VFS_patch_ENABLED == 'true' }}
         run: |
           cd kernel_workspace/kernel_platform/common
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
@@ -180,8 +196,19 @@ jobs:
           patch -p1 -F 3 < syscall_hooks.patch
           echo "完成"
 
-          #  cp ../../SukiSU_patch/other/lz4k_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
-          #  patch -p1 -F 3 < lz4kd.patch || true
+      - name: Apply lz4kd&zstdn Patches
+        if: ${{ github.event.inputs.ZRAM == 'true' }}
+        run: |
+          cd kernel_workspace/kernel_platform/common
+          cp ../../SukiSU_patch/other/lz4k_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
+          echo "正在打lz4kd补丁"
+          patch -p1 -F 3 < lz4kd.patch || true
+          echo '完成lz4kd补丁'
+
+          cp ../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/zstdn.patch ./
+          echo "正在打zstdn补丁"
+          patch -p1 -F 3 < zstdn.patch || true
+          echo '完成zstdn补丁'
 
       - name: Add SUSFS Configuration Settings
         run: |
@@ -194,7 +221,7 @@ jobs:
           fi
 
           # Add VFS configuration settings
-          if [[ "${{ github.event.inputs.VFS_patch_ENABLED }}" == 'enable' ]]; then
+          if [[ "${{ github.event.inputs.VFS_patch_ENABLED }}" == 'true' ]]; then
             echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
           else
@@ -217,35 +244,56 @@ jobs:
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
-
-          #if [ "${{ github.event.inputs.KERNEL_VERSION }}" = "5.10" ]; then
-          #  echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
-          #  echo "CONFIG_ZRAM=y" >> ./common/arch/arm64/configs/gki_defconfig
-          #  echo "CONFIG_MODULE_SIG=n" >> ./common/arch/arm64/configs/gki_defconfig
-          #  echo "CONFIG_CRYPTO_LZO=y" >> ./common/arch/arm64/configs/gki_defconfig
-          #  echo "CONFIG_ZRAM_DEF_COMP_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
-          #fi
-
-          #if [ "${{ github.event.inputs.KERNEL_VERSION }}" != "6.6" ] && [ "${{ github.event.inputs.KERNEL_VERSION }}" != "5.10" ]; then
-          #  sed -i 's/CONFIG_MODULE_SIG=y/CONFIG_MODULE_SIG=n/g' ./common/arch/arm64/configs/gki_defconfig
-          #  sed -i 's/CONFIG_ZSMALLOC=m/CONFIG_ZSMALLOC=y/g' ./common/arch/arm64/configs/gki_defconfig
-          #  sed -i 's/CONFIG_ZRAM=m/CONFIG_ZRAM=y/g' ./common/arch/arm64/configs/gki_defconfig
-          #fi
-
-          #if [ "${{ github.event.inputs.KERNEL_VERSION }}" = "6.6" ]; then
-          #  echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
-          #  sed -i 's/CONFIG_ZRAM=m/CONFIG_ZRAM=y/g' ./common/arch/arm64/configs/gki_defconfig
-          #fi
-
-          #if grep -q "CONFIG_ZSMALLOC=y" ./common/arch/arm64/configs/gki_defconfig && grep -q "CONFIG_ZRAM=y" ./common/arch/arm64/configs/gki_defconfig; then
-          #  echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
-          #  echo "CONFIG_CRYPTO_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
-          #  echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
-          #  echo "CONFIG_CRYPTO_842=y" >> ./common/arch/arm64/configs/gki_defconfig
-          #fi
           
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
+
+          # LZ4KD&ZSTDN配置
+          if [ "${{ github.event.inputs.ZRAM }}" = "true" ]; then
+          CONFIG_FILE=./common/arch/arm64/configs/gki_defconfig
+
+            if [ "${{ github.event.inputs.KERNEL_VERSION }}" = "5.10" ]; then
+              echo "CONFIG_ZSMALLOC=y" >> "$CONFIG_FILE"
+              echo "CONFIG_ZRAM=y" >> "$CONFIG_FILE"
+              echo "CONFIG_MODULE_SIG=n" >> "$CONFIG_FILE"
+              echo "CONFIG_CRYPTO_LZO=y" >> "$CONFIG_FILE"
+              echo "CONFIG_ZRAM_DEF_COMP_LZ4KD=y" >> "$CONFIG_FILE"
+            fi
+
+            if [ "${{ github.event.inputs.KERNEL_VERSION }}" != "6.6" ] && [ "${{ github.event.inputs.KERNEL_VERSION }}" != "5.10" ]; then
+              if grep -q "CONFIG_ZSMALLOC" -- "$CONFIG_FILE"; then
+                sed -i 's/CONFIG_ZSMALLOC=m/CONFIG_ZSMALLOC=y/g' "$CONFIG_FILE"
+              else
+                echo "CONFIG_ZSMALLOC=y" >> "$CONFIG_FILE"
+              fi
+              sed -i 's/CONFIG_ZRAM=m/CONFIG_ZRAM=y/g' "$CONFIG_FILE"
+            fi
+
+            if [ "${{ github.event.inputs.KERNEL_VERSION }}" = "6.6" ]; then
+              echo "CONFIG_ZSMALLOC=y" >> "$CONFIG_FILE"
+              sed -i 's/CONFIG_ZRAM=m/CONFIG_ZRAM=y/g' "$CONFIG_FILE"
+            fi
+
+            if [ "${{ github.event.inputs.ANDROID_VERSION }}" = "android14" ] || [ "${{ github.event.inputs.ANDROID_VERSION }}" = "android15" ]; then
+              if [  -e ./common/modules.bzl ]; then
+                sed -i 's/"drivers\/block\/zram\/zram\.ko",//g; s/"mm\/zsmalloc\.ko",//g' "./common/modules.bzl"
+                sed -i '/^_ARM64_GKI_MODULES_LIST = \[/a \    "lib/zstdn/crypto_zstdn.ko",' "./common/modules.bzl"
+              fi
+              echo "CONFIG_MODULE_SIG_FORCE=n" >> "$CONFIG_FILE"
+            elif [ "${{ github.event.inputs.KERNEL_VERSION }}" = "5.10" ] || [ "${{ github.event.inputs.KERNEL_VERSION }}" = "5.15" ]; then
+              rm "./common/android/gki_aarch64_modules"
+              echo 'lib/zstdn/crypto_zstdn.ko' > ./common/android/gki_aarch64_modules
+            fi
+
+            if grep -q "CONFIG_ZSMALLOC=y" "$CONFIG_FILE" && grep -q "CONFIG_ZRAM=y" "$CONFIG_FILE"; then
+              echo "CONFIG_CRYPTO_LZ4HC=y" >> "$CONFIG_FILE"
+              echo "CONFIG_CRYPTO_LZ4K=y" >> "$CONFIG_FILE"
+              echo "CONFIG_CRYPTO_LZ4KD=y" >> "$CONFIG_FILE"
+              echo "CONFIG_CRYPTO_842=y" >> "$CONFIG_FILE"
+              echo "CONFIG_CRYPTO_ZSTDN=m" >> "$CONFIG_FILE"
+              echo "CONFIG_CRYPTO_LZ4K_OPLUS=n" >> "$CONFIG_FILE"
+            fi
+          fi
 
       - name: Add make name
         run: |
@@ -256,18 +304,36 @@ jobs:
            sed -i '$s|echo "\$res"|echo "\${{ github.event.inputs.KERNEL_NAME }}"|' ./common/scripts/setlocalversion
   
       - name: Build kernel
+        if: ${{ github.event.inputs.CPU == 'sm8650' || github.event.inputs.CPU == 'sm7675' }}
         run: |
-          cd kernel_workspace
-          if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
-            ./kernel_platform/build_with_bazel.py -t ${{ github.event.inputs.CPUD }} gki --action_env=KSU_VERSION
-          else
-            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
-          fi
+          if [[ "${{ github.event.inputs.BAZEL }}" == "true" ]]; then
+            cd kernel_workspace/kernel_platform
+            if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
+              tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
+            elif [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android14" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]] || [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android15" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
+              tools/bazel run --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
+            else
+              cd kernel_workspace
+              ./kernel_platform/build_with_bazel.py -t ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+          
+      - name: Fallback build kernel
+        if: ${{ github.event.inputs.CPU != 'sm8650' && github.event.inputs.CPU != 'sm7675' }}
+        run: |
+            if [[ "${{ github.event.inputs.BAZEL }}" == "true" ]]; then
+            cd kernel_workspace/kernel_platform
+            if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
+              tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
+            elif [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android14" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]] || [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android15" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
+              tools/bazel run --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
+            else
+              cd kernel_workspace
+              LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0 ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
          
       - name: Make AnyKernel3
         run: |
           git clone https://github.com/Kernel-SU/AnyKernel3 --depth=1
-          rm -rf ./AnyKernel3/.git
+          rm -rf AnyKernel3/.git
+          rm -f AnyKernel3/push.sh
 
           dir1="/home/runner/work/Action_OnePlus_MKSU_SUSFS/Action_OnePlus_MKSU_SUSFS/kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/dist/"
           dir2="/home/runner/work/Action_OnePlus_MKSU_SUSFS/Action_OnePlus_MKSU_SUSFS/kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/gki_kernel/common/out/arch/arm64/boot/"
