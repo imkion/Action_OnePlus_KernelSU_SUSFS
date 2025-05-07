@@ -339,7 +339,7 @@ jobs:
       - name: Build kernel
         if: ${{ github.event.inputs.CPU == 'sm8650' || github.event.inputs.CPU == 'sm7675' }}
         run: |
-          if [[ "${{ github.event.inputs.BAZEL }}" == "true" ]]; then
+          if [[ "${{ github.event.inputs.BAZEL }}" = "true" ]]; then
             cd kernel_workspace/kernel_platform
             if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
               tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
@@ -352,7 +352,7 @@ jobs:
       - name: Fallback build kernel
         if: ${{ github.event.inputs.CPU != 'sm8650' && github.event.inputs.CPU != 'sm7675' }}
         run: |
-            if [[ "${{ github.event.inputs.BAZEL }}" == "true" ]]; then
+            if [[ "${{ github.event.inputs.BAZEL }}" = "true" ]]; then
             cd kernel_workspace/kernel_platform
             if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
               tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
