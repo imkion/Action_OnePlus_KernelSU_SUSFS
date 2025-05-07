@@ -319,9 +319,9 @@ jobs:
                 sed -i 's/"drivers\/block\/zram\/zram\.ko",//g; s/"mm\/zsmalloc\.ko",//g' "./common/modules.bzl"
               fi
               echo "CONFIG_MODULE_SIG_FORCE=n" >> "$CONFIG_FILE"
-            # elif [ "${{ inputs.kernel_version }}" = "5.15" ]; then
-            #   rm "./common/android/gki_aarch64_modules"
-            #   touch "./common/android/gki_aarch64_modules"
+            elif [ "${{ inputs.kernel_version }}" = "5.15" ]; then
+              rm "./common/android/gki_aarch64_modules"
+              touch "./common/android/gki_aarch64_modules"
             fi
 
             if grep -q "CONFIG_ZSMALLOC=y" "$CONFIG_FILE" && grep -q "CONFIG_ZRAM=y" "$CONFIG_FILE"; then
@@ -333,6 +333,11 @@ jobs:
               echo "CONFIG_CRYPTO_LZ4K_OPLUS=n" >> "$CONFIG_FILE"
             fi
           fi
+
+      - name: Update modules list
+        run: |
+          cp ./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/gki_kernel/common/modules.order \
+             ./kernel_workspace/kernel_platform/common/android/gki_aarch64_modules
 
       - name: Build kernel
         if: ${{ github.event.inputs.CPU == 'sm8650' || github.event.inputs.CPU == 'sm7675' }}
