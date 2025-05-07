@@ -436,11 +436,19 @@ jobs:
           cd kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist
           cp Image $GITHUB_WORKSPACE/AnyKernel3/Image
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
-         
+
+      - name: Remove _uv suffix from FEIL
+        id: feil_clean
+        run: |
+          clean_feil="${{ github.event.inputs.FEIL }}"
+          clean_feil="${clean_feil%_v}"  # 去掉结尾的 _v（如果有）
+          clean_feil="${clean_feil%_u}"  # 去掉结尾的 _u（如果有）
+          echo "value=$clean_feil" >> $GITHUB_OUTPUT
+
       - name: Upload AnyKernel3
         uses: actions/upload-artifact@v4
         with:
-         name: AnyKernel3_SukiSU_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}
+         name: AnyKernel3_SukiSU_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}${{ steps.suffix.outputs.value }}
          path: ./AnyKernel3/*
 
       - name: Upload Image
