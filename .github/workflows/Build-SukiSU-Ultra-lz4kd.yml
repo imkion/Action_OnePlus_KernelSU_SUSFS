@@ -413,8 +413,7 @@ jobs:
 
       - name: Find zram.ko
         run: |
-          cd kernel_workspace/kernel_platform/common
-          find -name *.ko
+          find -name kernel_workspace/kernel_platform *.ko
 
       # 下载 SUSFS 模块（CI）
       - name: Download Latest SUSFS Module from CI
