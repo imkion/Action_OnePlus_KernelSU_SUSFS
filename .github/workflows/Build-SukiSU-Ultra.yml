@@ -81,10 +81,6 @@ on:
         options:
           - gki
           - perf
-      # KERNEL_NAME:
-      #   description: "修改内核名称"
-      #   required: true
-      #   default: '-android14-11-o-g1132d864665d'
       kernelsu_variant:
         description: "选择 KSU"
         required: true
