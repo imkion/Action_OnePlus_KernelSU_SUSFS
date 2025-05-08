@@ -339,26 +339,26 @@ jobs:
       - name: Build kernel
         if: ${{ github.event.inputs.CPU == 'sm8650' || github.event.inputs.CPU == 'sm7675' }}
         run: |
-          if [[ "${{ github.event.inputs.BAZEL }}" = "true" ]]; then
-            cd kernel_workspace/kernel_platform
-          if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
-            tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
-          elif [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android14" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]] || [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android15" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
-            tools/bazel run --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
-          else
+          # if [[ "${{ github.event.inputs.BAZEL }}" = "true" ]]; then
+          #   cd kernel_workspace/kernel_platform
+          # if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
+          #   tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
+          # elif [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android14" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]] || [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android15" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
+          #   tools/bazel run --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
+          # else
             cd kernel_workspace
             ./kernel_platform/build_with_bazel.py -t ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           
       - name: Fallback build kernel
         if: ${{ github.event.inputs.CPU != 'sm8650' && github.event.inputs.CPU != 'sm7675' }}
         run: |
-            if [[ "${{ github.event.inputs.BAZEL }}" = "true" ]]; then
-              cd kernel_workspace/kernel_platform
-            if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
-              tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
-            elif [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android14" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]] || [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android15" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
-              tools/bazel run --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
-            else
+            # if [[ "${{ github.event.inputs.BAZEL }}" = "true" ]]; then
+            #   cd kernel_workspace/kernel_platform
+            # if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
+            #   tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
+            # elif [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android14" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]] || [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android15" && "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
+            #   tools/bazel run --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
+            # else
               cd kernel_workspace
               LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0 ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
          
