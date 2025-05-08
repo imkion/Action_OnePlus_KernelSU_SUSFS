@@ -365,6 +365,10 @@ jobs:
           if [ -n "$image_path" ]; then
             echo "找到 Image 文件: $image_path"
             cp -v "$image_path" ./AnyKernel3/Image
+            if [[ "$github.event.inputs.KPM == 'true' ]]; then
+              mkdir KPM_Image
+              cp -v "$image_path" ./KPM_Image/Image
+            fi
           else
             echo "错误：未找到 Image 文件！"
             exit 1
@@ -387,8 +391,8 @@ jobs:
       - name: Apply patch_linux and replace Image
         if: ${{ github.event.inputs.KPM == 'true' }}
         run: |
-          cd kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/dist
-          curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
+          cd KPM_Image
+          curl -LO https://raw.githubusercontent.com/Numbersf/Action-Build/main/patch_linux
           chmod +x patch_linux
           ./patch_linux
           rm -f Image
