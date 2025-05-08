@@ -126,8 +126,8 @@ jobs:
 
       - name: Configure Git
         run: |
-         git config --global user.name "ychenxuan"
-         git config --global user.email "3494167979@qq.com"
+         git config --global user.name "MClengchuan"
+         git config --global user.email "qq441791056@163.com"
 
       - name: Install dependencies
         run: |
@@ -172,7 +172,7 @@ jobs:
         if: ${{ github.event.inputs.kernelsu_variant == 'SukiSU' }}
         run: |
           cd kernel_workspace/kernel_platform
-          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/KernelSU/main/kernel/setup.sh" | bash ${{ env.BRANCH }}
+          curl -LSs "https://raw.githubusercontent.com/ShirkNeko/KernelSU/main/kernel/setup.sh" | bash -s susfs-dev
           cd ./KernelSU
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
@@ -182,35 +182,21 @@ jobs:
       - name: Apply SUSFS Patches SukiSU
         run: |
           cd kernel_workspace
-          git clone https://gitlab.com/shirkneko/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
-          
           cd kernel_platform
           echo "正在给内核打susfs补丁"
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
-          echo "完成"
 
           if [ "${{ github.event.inputs.ZRAM }}" = "true" ]; then
-            echo "正在给内核打zram补丁"
-            # 添加lz4k
-            cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux
-            cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib
-            cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./common/crypto
-            # lz4k一加优化补丁
-            cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./common/lib/
+          echo "正在给内核打zram补丁"
+          cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux
+          cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib
+          cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./common/crypto
+          cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./common/lib/
           fi
-          
-          # 应用补丁
-          cd ./common
-          
-          # 设置参数
-          sed -i 's/-32,12 +32,38/-32,11 +32,37/g' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
-          sed -i '/#include <trace\/hooks\/fs.h>/d' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
-          
-          patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
-          echo "完成"
           
       - name: Apply Hide Stuff Patches
         run: |
@@ -226,33 +212,38 @@ jobs:
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           echo "正在打vfs补丁"
           patch -p1 -F 3 < syscall_hooks.patch
-          echo "完成"
+          echo "vfs_patch完成"
+          fi
 
       - name: Apply lz4kd&zstdn Patches
         if: ${{ github.event.inputs.ZRAM == 'true' }}
         run: |
           cd kernel_workspace/kernel_platform/common
-          cp ../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
-          echo "正在打lz4kd补丁"
-          patch -p1 -F 3 < lz4kd.patch || true
-          echo '完成lz4kd补丁'
+            cp ../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
+            echo "正在打lz4kd补丁"
+            patch -p1 -F 3 < lz4kd.patch || true
+            echo '完成LZ4KD补丁'
 
       - name: Add SUSFS Configuration Settings
         run: |
           cd kernel_workspace/kernel_platform
-          # Add KSU configuration settings
-          echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
-          
-          if [[ "${{ github.event.inputs.kernelsu_variant }}" == "SukiSU-Ultra" ]]; then
-            echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
+          CONFIG_FILE=./common/arch/arm64/configs/gki_defconfig
+          KERNEL_VERSION="${{ github.event.inputs.KERNEL_VERSION }}"
+
+          # SukiSU Ultra config
+          echo "CONFIG_KSU=y" >> "$CONFIG_FILE"
+          echo "CONFIG_KPM=y" >> "$CONFIG_FILE"
+          if [ "${{ github.event.inputs.VFS }}" = "false" ]; then
+          echo "CONFIG_KPROBES=y" >> "$CONFIG_FILE"
+          fi
+          # VFS config
+          if [ "${{ github.event.inputs.VFS }}" = "true" ]; then
+            echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> "$CONFIG_FILE"
+            echo "CONFIG_KSU_MANUAL_HOOK=y" >> "$CONFIG_FILE"
           fi
 
-          # Add VFS configuration settings
-          if [[ "${{ github.event.inputs.VFS }}" == 'true' ]]; then
-            echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
-          else
-            echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> ./common/arch/arm64/configs/gki_defconfig
+          if [ "${{ github.event.inputs.VFS }}" = "false" ]; then
+            echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> "$CONFIG_FILE"
           fi
           
           # Add SUSFS configuration settings
@@ -339,7 +330,7 @@ jobs:
       - name: Build kernel
         if: ${{ github.event.inputs.CPU == 'sm8650' || github.event.inputs.CPU == 'sm7675' }}
         run: |
-          # if [[ "${{ github.event.inputs.BAZEL }}" = "true" ]]; then
+          # if [[ "${{ github.event.inputs.BAZEL }}" == 'true' ]]; then
           #   cd kernel_workspace/kernel_platform
           # if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
           #   tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
@@ -352,7 +343,7 @@ jobs:
       - name: Fallback build kernel
         if: ${{ github.event.inputs.CPU != 'sm8650' && github.event.inputs.CPU != 'sm7675' }}
         run: |
-            # if [[ "${{ github.event.inputs.BAZEL }}" = "true" ]]; then
+            # if [[ "${{ github.event.inputs.BAZEL }}" == 'true' ]]; then
             #   cd kernel_workspace/kernel_platform
             # if [[ "${{ github.event.inputs.ANDROID_VERSION }}" == "android13" && "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
             #   tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
