@@ -365,9 +365,9 @@ jobs:
           if [ -n "$image_path" ]; then
             echo "找到 Image 文件: $image_path"
             cp -v "$image_path" ./AnyKernel3/Image
-            if [[ "$github.event.inputs.KPM == 'true' ]]; then
-              mkdir KPM_Image
-              cp -v "$image_path" ./KPM_Image/Image
+            if [[ "$github.event.inputs.KPM" == "true" ]]; then
+              mkdir $GITHUB_WORKSPACE/KPM_Image/
+              cp -v "$image_path" $GITHUB_WORKSPACE/KPM_Image/Image
             fi
           else
             echo "错误：未找到 Image 文件！"
