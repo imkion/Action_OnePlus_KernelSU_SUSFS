@@ -213,7 +213,6 @@ jobs:
           echo "正在打vfs补丁"
           patch -p1 -F 3 < syscall_hooks.patch
           echo "vfs_patch完成"
-          fi
 
       - name: Apply lz4kd&zstdn Patches
         if: ${{ github.event.inputs.ZRAM == 'true' }}
