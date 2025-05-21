@@ -272,7 +272,7 @@ jobs:
       - name: Set suffix
         id: suffix
         run: |
-          echo "value=${{ github.event.inputs.KPM == 'true' && '_KPM' || '' }}${{ github.event.inputs.VFS == 'true' && '_VFS' || '' }}" >> $GITHUB_OUTPUT
+          echo "value=${{ github.event.inputs.VFS == 'true' && '_VFS' || '' }}" >> $GITHUB_OUTPUT
 
       - name: Remove _uv suffix from FEIL
         id: feil_clean
@@ -285,11 +285,11 @@ jobs:
       - name: Upload AnyKernel3 (no_KPM)
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}${{ steps.suffix.outputs.value }}_LZ4K
+          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}${{ steps.suffix.outputs.value }}_NoKPM_LZ4K
           path: kernel_workspace/kernel_platform/dist/AnyKernel3-no_kpm/*
 
       - name: Upload AnyKernel3 (KPM)
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}${{ steps.suffix.outputs.value }}_LZ4K
+          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}${{ steps.suffix.outputs.value }}_KPM_LZ4K
           path: kernel_workspace/kernel_platform/dist/AnyKernel3-kpm/*
