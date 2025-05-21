@@ -82,11 +82,6 @@ on:
         options:
           - gki
           - perf
-      SUSFS_CI:
-        type: boolean
-        description: "下载SUSFS模块是否使用CI构建？"
-        required: true
-        default: true
       VFS:
         type: boolean
         description: "是否启用手动钩子？"
