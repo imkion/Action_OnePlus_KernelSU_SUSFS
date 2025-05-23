@@ -299,7 +299,7 @@ jobs:
 
       - name: Find zram.ko
         run: |
-          find -name *.ko
+          find -name *zstdn.ko
 
       - name: Set suffix
         id: suffix
