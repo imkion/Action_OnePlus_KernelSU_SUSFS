@@ -318,13 +318,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}${{ steps.suffix.outputs.value }}_NoKPM_LZ4K
-          path: kernel_workspace/kernel_platform/dist/AnyKernel3-no_kpm/*
+          path: AnyKernel3-no_kpm/*
 
       - name: Upload AnyKernel3 (KPM)
         uses: actions/upload-artifact@v4
         with:
           name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}${{ steps.suffix.outputs.value }}_KPM_LZ4K
-          path: kernel_workspace/kernel_platform/dist/AnyKernel3-kpm/*
+          path: AnyKernel3-kpm/*
 
       - name: Upload zram.ko
         uses: actions/upload-artifact@v4
