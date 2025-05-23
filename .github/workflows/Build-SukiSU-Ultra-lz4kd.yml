@@ -305,15 +305,15 @@ jobs:
           dir4="kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
           dir5="kernel_workspace/kernel_platform/out/msm-kernel-kalama-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/zstd/"
 
-          if find "$dir1" -name "Image" | grep -q "crypto_zstdn.ko"; then
+          if find "$dir1" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path="$dir1"Image
-          elif find "$dir2" -name "Image" | grep -q "crypto_zstdn.ko"; then
+          elif find "$dir2" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path="$dir2"crypto_zstdn.ko
-          elif find "$dir3" -name "Image" | grep -q "crypto_zstdn.ko"; then
+          elif find "$dir3" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path="$dir3"crypto_zstdn.ko
-          elif find "$dir4" -name "Image" | grep -q "crypto_zstdn.ko"; then
+          elif find "$dir4" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path="$dir4"crypto_zstdn.ko
-          elif find "$dir5" -name "Image" | grep -q "crypto_zstdn.ko"; then
+          elif find "$dir5" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path="$dir5"crypto_zstdn.ko
           else
             zram_path=$(find "./kernel_workspace/kernel_platform/common/out/" -name "crypto_zstdn.ko" | head -n 1)
@@ -321,18 +321,16 @@ jobs:
 
           if [ -n "$image_path" ] && [ -f "$image_path" ]; then
             mkdir -p "$dir1"
-            if [ "$(realpath "$image_path")" != "$(realpath "$dir1"Image)" ]; then
-              cp "$image_path" "$dir1"
+            if [ "$(realpath "$zram_path")" != "$(realpath "$dir1"crypto_zstdn.ko)" ]; then
+              cp "$zram_path" "$dir1"
             else
               echo "源文件与目标相同，跳过复制"
             fi
-            cp "$dir1"Image ./AnyKernel3-no_kpm/Image
+            cp "$dir1"crypto_zstdn.ko ./AnyKernel3-no_kpm/crypto_zstdn.ko
           else
-            echo "未找到 Image 文件，构建可能失败"
+            echo "未找到 crypto_zstdn.ko 文件，构建可能失败"
             exit 1
           fi
-          
-          find -name crypto_zstdn.ko
 
       - name: Set suffix
         id: suffix
