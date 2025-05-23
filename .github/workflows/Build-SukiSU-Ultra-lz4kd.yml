@@ -242,30 +242,60 @@ jobs:
           # else
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           # fi
-          
-      - name: Generate Kernel lmages
+
+      - name: Make AnyKernel3
         run: |
-          cd kernel_workspace/kernel_platform/dist
-          cp Image Image_original
+          git clone https://github.com/Kernel-SU/AnyKernel3 AnyKernel3-no_kpm --depth=1
+          git clone https://github.com/Kernel-SU/AnyKernel3 AnyKernel3-kpm --depth=1
+          rm -rf AnyKernel3-{kpm,no_kpm}/.git
+          rm -f AnyKernel3-{kpm,no_kpm}/push.sh
+          dir1="kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
+          dir2="kernel_workspace/kernel_platform/bazel-out/k8-fastbuild/bin/msm-kernel/${{ github.event.inputs.CPUD }}_gki_kbuild_mixed_tree/"
+          dir3="kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-gki/dist/"
+          dir4="kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/arch/arm64/boot/"
+          dir5="kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/arch/arm64/boot/"
+          target1="./AnyKernel3-no_kpm/"
+          target2="./kernel_workspace/kernel"
+
+          if find "$dir1" -name "Image" | grep -q "Image"; then
+            image_path="$dir1"Image
+          elif find "$dir2" -name "Image" | grep -q "Image"; then
+            image_path="$dir2"Image
+          elif find "$dir3" -name "Image" | grep -q "Image"; then
+            image_path="$dir3"Image
+          elif find "$dir4" -name "Image" | grep -q "Image"; then
+            image_path="$dir4"Image
+          elif find "$dir5" -name "Image" | grep -q "Image"; then
+            image_path="$dir5"Image
+          else
+            image_path=$(find "./kernel_workspace/kernel_platform/common/out/" -name "Image" | head -n 1)
+          fi
+
+          if [ -n "$image_path" ] && [ -f "$image_path" ]; then
+            mkdir -p "$dir1"
+            if [ "$(realpath "$image_path")" != "$(realpath "$dir1"Image)" ]; then
+              cp "$image_path" "$dir1"
+            else
+              echo "源文件与目标相同，跳过复制"
+            fi
+            cp "$dir1"Image ./AnyKernel3-no_kpm/Image
+          else
+            echo "未找到 Image 文件，构建可能失败"
+            exit 1
+          fi
+         
+          
+      - name: Apply KPM configs
+        run: |
+          cd kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist
+          cp Image $GITHUB_WORKSPACE/AnyKernel3-no_kpm/Image
           curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
           chmod +x patch_linux
           ./patch_linux
-          mv oImage Image_kpm     
-          mv Image_original Image
-
-      - name: Prepare AnyKernel3 Packages
-        run: |
-         cd kernel_workspace/kernel_platform/dist
-         git clone https://github.com/Kernel-SU/AnyKernel3 AnyKernel3-no_kpm --depth=1
-         git clone https://github.com/Kernel-SU/AnyKernel3 AnyKernel3-kpm --depth=1
-         rm -rf AnyKernel3-{kpm,no_kpm}/.git
-         rm -f AnyKernel3-{kpm,no_kpm}/push.sh
-
-      - name: cp Image in AK3
-        run: |
-         cd kernel_workspace/kernel_platform/dist
-         cp Image AnyKernel3-no_kpm/Image       
-         cp Image_kpm AnyKernel3-kpm/Image
+          rm -f Image
+          mv oImage Image
+          cp Image $GITHUB_WORKSPACE/AnyKernel3-kpm/Image
+          cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
 
       - name: Find zram.ko
         run: |
