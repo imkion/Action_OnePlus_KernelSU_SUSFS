@@ -303,6 +303,10 @@ jobs:
           cp Image $GITHUB_WORKSPACE/AnyKernel3-kpm/Image
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
 
+      - name: Find crypto_zstdn.ko
+        run: |
+          Find -name crypto_zstdn.ko
+
       - name: Locate crypto_zstdn.ko
         run: |
           git clone https://github.com/FurLC/ZRAM-Module.git --depth=1
