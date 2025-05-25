@@ -300,8 +300,10 @@ jobs:
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
 
       - name: Locate crypto_zstdn.ko
-        id: locate_zram
         run: |
+          git clone https://github.com/FurLC/ZRAM-Module.git --depth=1
+          rm -rf ZRAM-Module/.git
+          rm -f ZRAM-Module/README.md
           zram1="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/vendor_dlkm/"
           zram2="./kernel_workspace/out/staging/lib/modules/"
           zram3="./kernel_workspace/out/staging/vendor_dlkm_staging/lib/modules/"
@@ -311,6 +313,7 @@ jobs:
           zram7="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/staging/vendor_dlkm_staging/lib/modules/"
           zram8="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
           zram9="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/zstd/"
+          target="./ZRAM-Module/ZRAM/"
 
           if find "$zram1" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path=$(find "$zram1" -name "crypto_zstdn.ko" | head -n 1)
@@ -335,12 +338,18 @@ jobs:
           fi
 
           if [ -n "$zram_path" ] && [ -f "$zram_path" ]; then
-            echo "找到 crypto_zstdn.ko 文件路径：$zram_path"
-            echo "zram_path=$zram_path" >> "$GITHUB_OUTPUT"
+            mkdir -p "$zram1"
+            if [ "$(realpath "$zram_path")" != "$(realpath "$zram1"crypto_zstdn.ko)" ]; then
+              cp "$zram_path" "$zram1"
+            else
+              echo "源文件与目标相同，跳过复制"
+            fi
+            cp "$zram1"crypto_zstdn.ko ./ZRAM-Module/ZRAM/zram.ko
           else
-            echo "未找到 crypto_zstdn.ko 文件"
+            echo "未找到 crypto_zstdn.ko 文件，构建可能失败"
             exit 1
           fi
+
 
       - name: Set suffix
         id: suffix
@@ -367,8 +376,8 @@ jobs:
           name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}${{ steps.suffix.outputs.value }}_KPM_LZ4K
           path: AnyKernel3-kpm/*
 
-      - name: Upload zram.ko
+      - name: Upload ZRAM-Module
         uses: actions/upload-artifact@v4
         with:
-          name: zram.ko
-          path: ${{ steps.locate_zram.outputs.zram_path }}
+          name: ZRAM-Module_${{ github.event.inputs.KERNEL_VERSION }}_${{ steps.feil_clean.outputs.value }}
+          path: ZRAM-Module/*
