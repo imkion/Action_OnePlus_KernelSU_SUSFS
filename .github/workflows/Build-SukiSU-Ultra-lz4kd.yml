@@ -306,7 +306,7 @@ jobs:
 
       - name: Find crypto_zstdn.ko
         run: |
-          Find -name crypto_zstdn.ko
+          find -name crypto_zstdn.ko
 
       - name: Locate crypto_zstdn.ko
         run: |
