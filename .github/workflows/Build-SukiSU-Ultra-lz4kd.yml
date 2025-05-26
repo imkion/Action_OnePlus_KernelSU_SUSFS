@@ -309,6 +309,7 @@ jobs:
           find -name *.ko
 
       - name: Locate crypto_zstdn.ko
+        if: ${{ github.event.inputs.KERNEL_VERSION == '5.10' || github.event.inputs.KERNEL_VERSION == '5.15' }}
         run: |
           git clone https://github.com/FurLC/ZRAM-Module.git --depth=1
           rm -rf ZRAM-Module/.git
@@ -331,7 +332,7 @@ jobs:
           elif find "$zram3" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path=$(find "$zram3" -name "crypto_zstdn.ko" | head -n 1)
           elif find "$zram4" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path="$zram4"crypto_zstdn.ko
+            zram_path=$(find "$zram4" -name "crypto_zstdn.ko" | head -n 1)
           elif find "$zram5" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path=$(find "$zram5" -name "crypto_zstdn.ko" | head -n 1)
           elif find "$zram6" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
@@ -339,7 +340,7 @@ jobs:
           elif find "$zram7" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path=$(find "$zram7" -name "crypto_zstdn.ko" | head -n 1)
           elif find "$zram8" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path="$zram8"crypto_zstdn.ko
+            zram_path=$(find "$zram8" -name "crypto_zstdn.ko" | head -n 1)
           elif find "$zram9" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
             zram_path=$(find "$zram9" -name "crypto_zstdn.ko" | head -n 1)
           else
@@ -359,6 +360,45 @@ jobs:
             exit 1
           fi
 
+      - name: Locate ZRAM-related ko files for 6.1 and 6.6 kernels
+        if: ${{ github.event.inputs.KERNEL_VERSION == '6.1' || github.event.inputs.KERNEL_VERSION == '6.6' }}
+        run: |
+          git clone https://github.com/FurLC/ZRAM-Module.git --depth=1
+          rm -rf ZRAM-Module/.git
+          rm -f ZRAM-Module/README.md
+          zram1="./kernel_workspace/kernel_platform/out/msm-kernel-pineapple-gki/dist/"
+          zram2="./kernel_workspace/kernel_platform/out/vendor/oplus/kernel/mm/"
+          zram3="./kernel_workspace/kernel_platform/out/dist/"
+          zram4="./kernel_workspace/device/qcom/pineapple-kernel/vendor_dlkm/"
+          zram5="./kernel_workspace/device/qcom/pineapple-kernel/system_dlkm/lib/modules/6.1.75/kernel/drivers/block/zram/"
+          zram6="./kernel_workspace/device/qcom/pineapple-kernel/system_dlkm/flatten/lib/modules/"
+          zram7="./kernel_workspace/kernel_platform/out/msm-kernel-pineapple-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/"
+          zram8="./kernel_workspace/kernel_platform/out/msm-kernel-pineapple-gki/msm-kernel/mm/oplus_bsp_hybridswap_zram/"
+          target="./ZRAM-Module/ZRAM/"
+
+          if find "$zram1" -name "*zram*.ko" | grep -q "zram"; then
+            zram_path=$(find "$zram1" -name "*zram*.ko" | head -n 1)
+          elif find "$zram2" -name "*zram*.ko" | grep -q "zram"; then
+            zram_path=$(find "$zram2" -name "*zram*.ko" | head -n 1)
+          elif find "$zram3" -name "*zram*.ko" | grep -q "zram"; then
+            zram_path=$(find "$zram3" -name "*zram*.ko" | head -n 1)
+          elif find "$zram4" -name "*zram*.ko" | grep -q "zram"; then
+            zram_path=$(find "$zram4" -name "*zram*.ko" | head -n 1)
+          elif find "$zram5" -name "*zram*.ko" | grep -q "zram"; then
+            zram_path=$(find "$zram5" -name "*zram*.ko" | head -n 1)
+          elif find "$zram6" -name "*zram*.ko" | grep -q "zram"; then
+            zram_path=$(find "$zram6" -name "*zram*.ko" | head -n 1)
+          elif find "$zram7" -name "*zram*.ko" | grep -q "zram"; then
+            zram_path=$(find "$zram7" -name "*zram*.ko" | head -n 1)
+          elif find "$zram8" -name "*zram*.ko" | grep -q "zram"; then
+            zram_path=$(find "$zram8" -name "*zram*.ko" | head -n 1)
+          else
+            zram_path=$(find "./kernel_workspace" -name "*zram*.ko" | head -n 1)
+          fi
+
+          echo "ZRAM module file located at: $zram_path"
+          # Copy the located module to target directory
+          cp "$zram_path" "$target"
 
       - name: Set suffix
         id: suffix
