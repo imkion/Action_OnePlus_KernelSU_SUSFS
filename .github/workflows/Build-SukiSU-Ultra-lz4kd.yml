@@ -308,8 +308,8 @@ jobs:
         run: |
           find -name *.ko
 
-#       - name: Locate crypto_zstdn.ko
-#         run: |
+      - name: Locate crypto_zstdn.ko
+        run: |
           git clone https://github.com/FurLC/ZRAM-Module.git --depth=1
           rm -rf ZRAM-Module/.git
           rm -f ZRAM-Module/README.md
