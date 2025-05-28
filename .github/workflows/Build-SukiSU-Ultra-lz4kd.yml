@@ -286,6 +286,7 @@ jobs:
               echo "源文件与目标相同，跳过复制"
             fi
             cp "$dir1"Image ./AnyKernel3-no_kpm/Image
+            echo "IMAGE_PATH=$image_path" >> $GITHUB_ENV
           else
             echo "未找到 Image 文件，构建可能失败"
             exit 1
@@ -293,7 +294,8 @@ jobs:
           
       - name: Apply KPM configs
         run: |
-          cd kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist
+          echo "使用的 Image 路径是: $IMAGE_PATH"
+          cd "$(dirname "$IMAGE_PATH")"
           cp Image $GITHUB_WORKSPACE/AnyKernel3-no_kpm/Image
           curl -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
           chmod +x patch_linux
