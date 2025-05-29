@@ -401,6 +401,13 @@ jobs:
           # Copy the located module to target directory
           cp "$zram_path" "$target"
 
+      - name: cp zram.ko
+        run: |
+          mkdir ZRAM
+          cp ./kernel_workspace/out/dist/oplus_bsp_zram_opt.ko ./ZRAM/
+          cp ./kernel_workspace/out/dist/oplus_bsp_hybridswap_zram.ko ./ZRAM/
+          cp ./kernel_workspace/out/dist/oplus_bsp_zsmalloc.ko ./ZRAM/
+
       - name: Set suffix
         id: suffix
         run: |
@@ -431,3 +438,9 @@ jobs:
         with:
           name: ZRAM-Module_${{ github.event.inputs.KERNEL_VERSION }}_${{ steps.feil_clean.outputs.value }}
           path: ZRAM-Module/*
+
+      - name: Upload ZRAM.ko
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZRAM.ko_${{ github.event.inputs.KERNEL_VERSION }}_${{ steps.feil_clean.outputs.value }}
+          path: ZRAM/*
