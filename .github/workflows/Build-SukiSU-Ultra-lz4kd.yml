@@ -91,18 +91,32 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_HARDLINK: "true"
+      CCACHE_DIR: /home/runner/.ccache  
+      CCACHE_MAXSIZE: 8G
     steps:
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
         with:
           root-reserve-mb: 8192
           temp-reserve-mb: 2048
-          swap-size-mb: 8192
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
+
+      - name: Selected Input Parameters (Debug)
+        run: |
+          echo "Selected CPU: ${{ github.event.inputs.CPU }}"
+          echo "Selected FEIL: ${{ github.event.inputs.FEIL }}"
+          echo "Selected CPUD: ${{ github.event.inputs.CPUD }}"
+          echo "Selected ANDROID_VERSION: ${{ github.event.inputs.ANDROID_VERSION }}"
+          echo "Selected KERNEL_VERSION: ${{ github.event.inputs.KERNEL_VERSION }}"
+          echo "Selected BUILD_METHOD: ${{ github.event.inputs.BUILD_METHOD }}"
+          echo "Selected VFS: ${{ github.event.inputs.VFS }}"
 
       - name: Configure Git
         run: |
@@ -112,17 +126,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update && sudo apt upgrade -y
-          sudo apt install -y python3 git curl
+          sudo apt install -y python3 git curl ccache unzip
 
-      - name: Show selected inputs debug
-        run: |
-          echo "Selected CPU: ${{ github.event.inputs.CPU }}"
-          echo "Selected FEIL: ${{ github.event.inputs.FEIL }}"
-          echo "Selected CPUD: ${{ github.event.inputs.CPUD }}"
-          echo "Selected ANDROID_VERSION: ${{ github.event.inputs.ANDROID_VERSION }}"
-          echo "Selected KERNEL_VERSION: ${{ github.event.inputs.KERNEL_VERSION }}"
-          echo "Selected BUILD_METHOD: ${{ github.event.inputs.BUILD_METHOD }}"
-          echo "Selected VFS: ${{ github.event.inputs.VFS }}"
+      - name: Restore ccache
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.ccache
+          key: ccache-${{ runner.os }}-${{ github.ref }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
 
       - name: Install repo tool
         run: |
@@ -140,7 +152,13 @@ jobs:
           sed -i 's/ -dirty//g' kernel_platform/common/scripts/setlocalversion
           sed -i 's/ -dirty//g' kernel_platform/msm-kernel/scripts/setlocalversion
           sed -i 's/ -dirty//g' kernel_platform/external/dtc/scripts/setlocalversion
-
+          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/common/scripts/setlocalversion
+          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/msm-kernel/scripts/setlocalversion
+          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/external/dtc/scripts/setlocalversion
+          sed -i '$s|echo "\$res"|echo "-FurLC"|' kernel_platform/common/scripts/setlocalversion            
+          sed -i '$s|echo "\$res"|echo "-FurLC"|' kernel_platform/msm-kernel/scripts/setlocalversion
+          sed -i '$s|echo "\$res"|echo "-FurLC"|' kernel_platform/external/dtc/scripts/setlocalversion
+         
       # 添加 SukiSU Ultra
       - name: Add KernelSU-SukiSU Ultra
         run: |
@@ -156,11 +174,13 @@ jobs:
         run: |
           cd kernel_workspace
           git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
+          git clone https://github.com/WildKernels/kernel_patches.git
           git clone https://github.com/SukiSU-Ultra/SukiSU_patch.git
 
           #susfs
           cd kernel_platform
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
+          cp ../kernel_patches/next/syscall_hooks.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
           
@@ -172,20 +192,17 @@ jobs:
           
           # Apply patches
           cd ./common
-
-          sed -i 's/-32,12 +32,38/-32,11 +32,37/g' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
-          sed -i '/#include <trace\/hooks\/fs.h>/d' 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
-          
           patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
-          cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
+          cp ../../kernel_patches/69_hide_stuff.patch ./
+          patch -p1 -F 3 < 69_hide_stuff.patch
           patch -p1 -F 3 < syscall_hooks.patch
-          echo "完成"
 
-      - name: Apply lz4kd Patches
-        run: |
-          cd kernel_workspace/kernel_platform/common
+          # Apply lz4k
           cp ../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
           patch -p1 -F 3 < lz4kd.patch || true
+          cp ../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4k_oplus.patch ./
+          patch -p1 -F 3 < lz4k_oplus.patch || true
+          echo "完成"
 
       - name: Add SUSFS Configuration Settings
         run: |
@@ -194,15 +211,11 @@ jobs:
           # Add KSU configuration settings
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
-
+          
           # Add VFS configuration settings
-          if [ "${{ github.event.inputs.VFS }}" = "true" ]; then
-            echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
-            echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
-          else
-            echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> ./common/arch/arm64/configs/gki_defconfig
-          fi
-
+          echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig      
+          
           # Add SUSFS configuration settings
           echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -219,35 +232,30 @@ jobs:
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
-          echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
-          # echo "CONFIG_CRYPTO_ZSTD=m" >> ./common/arch/arm64/configs/gki_defconfig
 
+          # Add lz4kd
+          echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_CRYPTO_LZ4K=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_CRYPTO_842=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_CRYPTO_LZ4K_OPLUS=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_ZRAM_WRITEBACK=y" >> ./common/arch/arm64/configs/gki_defconfig
+          
           # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
-      - name: Add make name
-        run: |
-         cd kernel_workspace/kernel_platform
-           if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
-             sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" ./build/kernel/kleaf/impl/stamp.bzl
-           fi
-           sed -i '$s|echo "\$res"|echo "\${{ github.event.inputs.KERNEL_NAME }}"|' ./common/scripts/setlocalversion
-
       - name: Build kernel
         run: |
-          cd kernel_workspace
-          export BAZEL_BUILD_ARGS="--jobs=2 --local_ram_resources=6000 --local_cpu_resources=2"
-          # if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
-          #   cd kernel_platform
-          #   tools/bazel run --config=fast --config=local --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
-          # elif [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]]; then
-          #   cd kernel_platform
-          #   tools/bazel run --config=fast --config=stamp --lto=thin //common:kernel_aarch64_dist -- --dist_dir=dist
-          # else
-          if [ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]; then
-            ./kernel_platform/build_with_bazel.py -t ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+          if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
+            export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:$PATH"
+            export PATH="/usr/lib/ccache:$PATH"
+            sudo apt install libelf-dev
+            cd kernel_workspace/kernel_platform/common
+            make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole LD=ld.lld  HOSTLD=ld.lld O=out KCFLAGS+=-O2 gki_defconfig all
           else
-            LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0 ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+            cd kernel_workspace
+            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           fi
 
       - name: Make AnyKernel3
@@ -256,11 +264,11 @@ jobs:
           git clone https://github.com/Kernel-SU/AnyKernel3 AnyKernel3-kpm --depth=1
           rm -rf AnyKernel3-{kpm,no_kpm}/.git
           rm -f AnyKernel3-{kpm,no_kpm}/push.sh
-          dir1="kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/dist/"
+          dir1="kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
           dir2="kernel_workspace/kernel_platform/bazel-out/k8-fastbuild/bin/msm-kernel/${{ github.event.inputs.CPUD }}_gki_kbuild_mixed_tree/"
-          dir3="kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/dist/"
-          dir4="kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/gki_kernel/common/arch/arm64/boot/"
-          dir5="kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/gki_kernel/common/arch/arm64/boot/"
+          dir3="kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-gki/dist/"
+          dir4="kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/arch/arm64/boot/"
+          dir5="kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/arch/arm64/boot/"
           target1="./AnyKernel3-no_kpm/"
           target2="./kernel_workspace/kernel"
 
@@ -305,108 +313,86 @@ jobs:
           cp Image $GITHUB_WORKSPACE/AnyKernel3-kpm/Image
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
 
-      - name: Find crypto_zstdn.ko
+      - name: Find zram.ko & crypto_zstdn.ko (Debug)
         run: |
-          find -name *.ko
+          find -name zram.ko
+          find -name crypto_zstdn.ko
 
       - name: Locate crypto_zstdn.ko
         if: ${{ github.event.inputs.KERNEL_VERSION == '5.10' || github.event.inputs.KERNEL_VERSION == '5.15' }}
         run: |
-          git clone https://github.com/FurLC/ZRAM-Module.git --depth=1
-          rm -rf ZRAM-Module/.git
-          rm -f ZRAM-Module/README.md
-          zram1="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/vendor_dlkm/"
+          curl -s https://api.github.com/repos/FurLC/ZRAM-Module/releases/latest | grep "browser_download_url" | grep "ZRAM-Module-.*\.zip" | cut -d '"' -f 4 | xargs wget -N
+          unzip "$(ls -t ZRAM-Module-*.zip | head -1)"
+
+          zram1="./kernel_workspace/out/dist/"
           zram2="./kernel_workspace/out/staging/lib/modules/"
           zram3="./kernel_workspace/out/staging/vendor_dlkm_staging/lib/modules/"
-          zram4="./kernel_workspace/out/dist/"
-          zram5="./kernel_workspace/out/msm-kernel/mm/oplus_mm/hybridswap_zram/zstd/"
-          zram6="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/staging/lib/modules/"
-          zram7="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/staging/vendor_dlkm_staging/lib/modules/"
-          zram8="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
+          zram4="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
+          zram5="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/staging/lib/modules/"
+          zram6="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/staging/vendor_dlkm_staging/lib/modules/"
+          zram7="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/vendor_dlkm/"
+          zram8="./kernel_workspace/out/msm-kernel/mm/oplus_mm/hybridswap_zram/zstd/"
           zram9="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/zstd/"
-          target="./ZRAM-Module/ZRAM/"
+          target="./ZRAM-Module/zram/zram.ko"
 
-          if find "$zram1" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path=$(find "$zram1" -name "crypto_zstdn.ko" | head -n 1)
-          elif find "$zram2" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path=$(find "$zram2" -name "crypto_zstdn.ko" | head -n 1)
-          elif find "$zram3" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path=$(find "$zram3" -name "crypto_zstdn.ko" | head -n 1)
-          elif find "$zram4" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path=$(find "$zram4" -name "crypto_zstdn.ko" | head -n 1)
-          elif find "$zram5" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path=$(find "$zram5" -name "crypto_zstdn.ko" | head -n 1)
-          elif find "$zram6" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path=$(find "$zram6" -name "crypto_zstdn.ko" | head -n 1)
-          elif find "$zram7" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path=$(find "$zram7" -name "crypto_zstdn.ko" | head -n 1)
-          elif find "$zram8" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path=$(find "$zram8" -name "crypto_zstdn.ko" | head -n 1)
-          elif find "$zram9" -name "crypto_zstdn.ko" | grep -q "crypto_zstdn.ko"; then
-            zram_path=$(find "$zram9" -name "crypto_zstdn.ko" | head -n 1)
-          else
+          for dir in "$zram1" "$zram2" "$zram3" "$zram4" "$zram5" "$zram6" "$zram7" "$zram8" "$zram9"; do
+            zram_path=$(find "$dir" -name "crypto_zstdn.ko" 2>/dev/null | head -n 1)
+            [ -n "$zram_path" ] && break
+          done
+
+          if [ -z "$zram_path" ]; then
             zram_path=$(find "./kernel_workspace" -name "crypto_zstdn.ko" | head -n 1)
           fi
 
           if [ -n "$zram_path" ] && [ -f "$zram_path" ]; then
-            mkdir -p "$zram1"
-            if [ "$(realpath "$zram_path")" != "$(realpath "$zram1"crypto_zstdn.ko)" ]; then
-              cp "$zram_path" "$zram1"
+            echo "crypto_zstdn.ko file located at: $zram_path"
+            mkdir -p "$(dirname "$target")"
+            if [ "$(realpath "$zram_path")" != "$(realpath "$target")" ]; then
+              cp "$zram_path" "$target"
             else
               echo "源文件与目标相同，跳过复制"
             fi
-            cp "$zram1"crypto_zstdn.ko ./ZRAM-Module/ZRAM/zram.ko
           else
             echo "未找到 crypto_zstdn.ko 文件，构建可能失败"
             exit 1
           fi
 
-      - name: Locate ZRAM-related ko files for 6.1 and 6.6 kernels
+      - name: Locate zram.ko
         if: ${{ github.event.inputs.KERNEL_VERSION == '6.1' || github.event.inputs.KERNEL_VERSION == '6.6' }}
         run: |
-          git clone https://github.com/FurLC/ZRAM-Module.git --depth=1
-          rm -rf ZRAM-Module/.git
-          rm -f ZRAM-Module/README.md
-          zram1="./kernel_workspace/kernel_platform/out/msm-kernel-pineapple-gki/dist/"
-          zram2="./kernel_workspace/kernel_platform/out/vendor/oplus/kernel/mm/"
-          zram3="./kernel_workspace/kernel_platform/out/dist/"
-          zram4="./kernel_workspace/device/qcom/pineapple-kernel/vendor_dlkm/"
-          zram5="./kernel_workspace/device/qcom/pineapple-kernel/system_dlkm/lib/modules/6.1.75/kernel/drivers/block/zram/"
-          zram6="./kernel_workspace/device/qcom/pineapple-kernel/system_dlkm/flatten/lib/modules/"
-          zram7="./kernel_workspace/kernel_platform/out/msm-kernel-pineapple-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/"
-          zram8="./kernel_workspace/kernel_platform/out/msm-kernel-pineapple-gki/msm-kernel/mm/oplus_bsp_hybridswap_zram/"
-          target="./ZRAM-Module/ZRAM/"
+          curl -s https://api.github.com/repos/FurLC/ZRAM-Module/releases/latest | grep "browser_download_url" | grep "ZRAM-Module-.*\.zip" | cut -d '"' -f 4 | xargs wget -N
+          unzip "$(ls -t ZRAM-Module-*.zip | head -1)"
 
-          if find "$zram1" -name "*zram*.ko" | grep -q "zram"; then
-            zram_path=$(find "$zram1" -name "*zram*.ko" | head -n 1)
-          elif find "$zram2" -name "*zram*.ko" | grep -q "zram"; then
-            zram_path=$(find "$zram2" -name "*zram*.ko" | head -n 1)
-          elif find "$zram3" -name "*zram*.ko" | grep -q "zram"; then
-            zram_path=$(find "$zram3" -name "*zram*.ko" | head -n 1)
-          elif find "$zram4" -name "*zram*.ko" | grep -q "zram"; then
-            zram_path=$(find "$zram4" -name "*zram*.ko" | head -n 1)
-          elif find "$zram5" -name "*zram*.ko" | grep -q "zram"; then
-            zram_path=$(find "$zram5" -name "*zram*.ko" | head -n 1)
-          elif find "$zram6" -name "*zram*.ko" | grep -q "zram"; then
-            zram_path=$(find "$zram6" -name "*zram*.ko" | head -n 1)
-          elif find "$zram7" -name "*zram*.ko" | grep -q "zram"; then
-            zram_path=$(find "$zram7" -name "*zram*.ko" | head -n 1)
-          elif find "$zram8" -name "*zram*.ko" | grep -q "zram"; then
-            zram_path=$(find "$zram8" -name "*zram*.ko" | head -n 1)
-          else
-            zram_path=$(find "./kernel_workspace" -name "*zram*.ko" | head -n 1)
+          zram1="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
+          zram2="./kernel_workspace/kernel_platform/out/dist/"
+          zram3="./kernel_workspace/kernel_platform/out/vendor/oplus/kernel/mm/"
+          zram4="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/vendor_dlkm/"
+          zram5="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/system_dlkm/flatten/lib/modules/"
+          zram6="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/"
+          zram7="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_bsp_hybridswap_zram/"
+          target="./ZRAM-Module/zram/zram.ko"
+
+          for dir in "$zram1" "$zram2" "$zram3" "$zram4" "$zram5" "$zram6" "$zram7"; do
+            zram_path=$(find "$dir" -name "zram.ko" | head -n 1)
+            [ -n "$zram_path" ] && break
+          done
+
+          if [ -z "$zram_path" ]; then
+            zram_path=$(find "./kernel_workspace" -name "zram.ko" | head -n 1)
           fi
 
-          echo "ZRAM module file located at: $zram_path"
-          # Copy the located module to target directory
-          cp "$zram_path" "$target"
-
-      - name: cp zram.ko
-        run: |
-          mkdir ZRAM
-          cp ./kernel_workspace/out/dist/oplus_bsp_zram_opt.ko ./ZRAM/
-          cp ./kernel_workspace/out/dist/oplus_bsp_hybridswap_zram.ko ./ZRAM/
-          cp ./kernel_workspace/out/dist/oplus_bsp_zsmalloc.ko ./ZRAM/
+          if [ -n "$zram_path" ] && [ -f "$zram_path" ]; then
+            echo "ZRAM module file located at: $zram_path"
+            mkdir -p "$(dirname "$target")"
+            if [ "$(realpath "$zram_path")" != "$(realpath "$target")" ]; then
+              cp "$zram_path" "$target"
+            else
+              echo "源文件与目标相同，跳过复制"
+            fi
+          else
+            echo "未找到 zram.ko 文件，构建可能失败"
+            exit 1
+          fi
 
       - name: Set suffix
         id: suffix
