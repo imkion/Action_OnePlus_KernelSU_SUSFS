@@ -242,6 +242,7 @@ jobs:
           cd ..
           wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
           patch -p1 < enable_scx.patch
+          echo "✅ sched_ext (SCX) 调度补丁已注入并配置完成"
 
       - name: 检查 sched_ext Makefile 配置
         run: |
