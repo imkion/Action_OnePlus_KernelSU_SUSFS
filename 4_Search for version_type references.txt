@@ -1,0 +1,759 @@
+﻿2025-06-04T05:23:46.1258059Z ##[group]Run cd oneplus_kernel
+2025-06-04T05:23:46.1258397Z [36;1mcd oneplus_kernel[0m
+2025-06-04T05:23:46.1258653Z [36;1mecho "========= 查找 version_type 相关 ========="[0m
+2025-06-04T05:23:46.1258957Z [36;1mgrep -rn "version_type" . || true[0m
+2025-06-04T05:23:46.1259256Z [36;1mecho "========= 查找 of_property_read_string ========="[0m
+2025-06-04T05:23:46.1259576Z [36;1mgrep -rn "of_property_read_string" . || true[0m
+2025-06-04T05:23:46.1259866Z [36;1mecho "========= 查找 HMBIRD ========="[0m
+2025-06-04T05:23:46.1260153Z [36;1mgrep -rn "HMBIRD" . || true[0m
+2025-06-04T05:23:46.1312956Z shell: /usr/bin/bash -e {0}
+2025-06-04T05:23:46.1313427Z ##[endgroup]
+2025-06-04T05:23:46.1384984Z ========= 查找 version_type 相关 =========
+2025-06-04T05:23:47.7140711Z grep: ./.git/index: binary file matches
+2025-06-04T05:23:47.7141267Z ./arch/sparc/kernel/pci_sun4v.c:917:	u64		version_type;
+2025-06-04T05:23:47.7141887Z ./arch/sparc/kernel/pci_sun4v.c:989:	if ((ep->version_type & MSIQ_TYPE_MASK) == 0)
+2025-06-04T05:23:47.7142766Z ./arch/sparc/kernel/pci_sun4v.c:992:	type = (ep->version_type & MSIQ_TYPE_MASK) >> MSIQ_TYPE_SHIFT;
+2025-06-04T05:23:47.7143768Z ./arch/sparc/kernel/pci_sun4v.c:1006:	ep->version_type &= ~MSIQ_TYPE_MASK;
+2025-06-04T05:23:47.7144337Z ./include/net/devlink.h:1829:enum devlink_info_version_type {
+2025-06-04T05:23:47.7144896Z ./include/net/devlink.h:1845:					enum devlink_info_version_type version_type);
+2025-06-04T05:23:47.7145503Z ./include/net/devlink.h:1852:					 enum devlink_info_version_type version_type);
+2025-06-04T05:23:47.7146015Z ./include/linux/pldmfw.h:27:	u8 version_type;
+2025-06-04T05:23:47.7146392Z ./include/linux/pldmfw.h:108:	u8 version_type;
+2025-06-04T05:23:47.7146837Z ./samples/mei/mei-amt-version.c:249:struct amt_version_type {
+2025-06-04T05:23:47.7147455Z ./samples/mei/mei-amt-version.c:262:	struct amt_version_type versions[AMT_VERSIONS_NUMBER];
+2025-06-04T05:23:47.7148201Z ./samples/mei/mei-amt-version.c:332:	if (code_ver->count != ver_type_cnt / sizeof(struct amt_version_type)) {
+2025-06-04T05:23:47.7148734Z ./android/abi_gki_aarch64.stg:209846:  name: "version_type"
+2025-06-04T05:23:47.7149443Z ./drivers/staging/media/atomisp/pci/isp/kernels/conversion/conversion_1.0/ia_css_conversion.host.h:19:#include "ia_css_conversion_types.h"
+2025-06-04T05:23:47.7150235Z ./drivers/usb/dwc3/core.c:857:		dwc->version_type = dwc3_readl(dwc->regs, DWC3_VER_TYPE);
+2025-06-04T05:23:47.7150855Z ./drivers/usb/dwc3/core.h:1036: * @version_type: VERSIONTYPE register contents, a sub release of a revision
+2025-06-04T05:23:47.7151611Z ./drivers/usb/dwc3/core.h:1275:	u32			version_type;
+2025-06-04T05:23:47.7152029Z ./drivers/usb/dwc3/core.h:1570:	 dwc->version_type >= _ip##_VERSIONTYPE_##_from &&		\
+2025-06-04T05:23:47.7152529Z ./drivers/usb/dwc3/core.h:1572:	  dwc->version_type <= _ip##_VERSIONTYPE_##_to))
+2025-06-04T05:23:47.7152967Z ./drivers/mfd/kempld-core.c:327:	const char *version_type;
+2025-06-04T05:23:47.7153491Z ./drivers/mfd/kempld-core.c:331:		version_type = "release";
+2025-06-04T05:23:47.7153871Z ./drivers/mfd/kempld-core.c:334:		version_type = "debug";
+2025-06-04T05:23:47.7154237Z ./drivers/mfd/kempld-core.c:337:		version_type = "custom";
+2025-06-04T05:23:47.7154627Z ./drivers/mfd/kempld-core.c:340:		version_type = "unspecified";
+2025-06-04T05:23:47.7155002Z ./drivers/mfd/kempld-core.c:344:	return version_type;
+2025-06-04T05:23:47.7155452Z ./drivers/net/ethernet/broadcom/bnxt/bnxt_devlink.h:68:enum bnxt_dl_version_type {
+2025-06-04T05:23:47.7156100Z ./drivers/net/ethernet/broadcom/bnxt/bnxt_devlink.c:800:			    enum bnxt_dl_version_type type, const char *key,
+2025-06-04T05:23:47.7156800Z ./drivers/net/ethernet/intel/ice/ice_fw_update.c:241:	comp_tbl->cvs_type = component->version_type;
+2025-06-04T05:23:47.7157381Z ./drivers/net/ethernet/intel/ice/ice_devlink.c:214:enum ice_version_type {
+2025-06-04T05:23:47.7157908Z ./drivers/net/ethernet/intel/ice/ice_devlink.c:221:	enum ice_version_type type;
+2025-06-04T05:23:47.7158526Z ./drivers/net/ethernet/intel/ice/ice_devlink.c:323:		enum ice_version_type type = ice_devlink_versions[i].type;
+2025-06-04T05:23:47.7159348Z ./drivers/net/ethernet/chelsio/cxgb3/t3_hw.c:971:enum fw_version_type {
+2025-06-04T05:23:47.7159797Z ./lib/pldmfw/pldmfw.c:346:	record->version_type = __record->version_type;
+2025-06-04T05:23:47.7160255Z ./lib/pldmfw/pldmfw.c:478:		component->version_type = __component->version_type;
+2025-06-04T05:23:47.7160750Z ./lib/pldmfw/pldmfw_private.h:47:	u8 version_type;		    /* PackageVersionStringType */
+2025-06-04T05:23:47.7161282Z ./lib/pldmfw/pldmfw_private.h:67:	u8 version_type;		/* ComponentImageSetVersionType */
+2025-06-04T05:23:47.7161793Z ./lib/pldmfw/pldmfw_private.h:113:	u8 version_type;		/* ComponentVersionStringType */
+2025-06-04T05:23:47.8711805Z ./tools/testing/kunit/kunit_parser.py:254:			version_type: str, test: Test) -> None:
+2025-06-04T05:23:47.8712641Z ./tools/testing/kunit/kunit_parser.py:263:	version_type - 'KTAP' or 'TAP' depending on the type of
+2025-06-04T05:23:47.8713833Z ./tools/testing/kunit/kunit_parser.py:268:		test.add_error(f'{version_type} version lower than expected!')
+2025-06-04T05:23:47.8715233Z ./tools/testing/kunit/kunit_parser.py:270:		test.add_error(f'{version_type} version higer than expected!')
+2025-06-04T05:23:47.8716075Z ./net/devlink/dev.c:14:			   enum devlink_info_version_type version_type,
+2025-06-04T05:23:47.8716928Z ./net/devlink/dev.c:697:				    enum devlink_info_version_type version_type)
+2025-06-04T05:23:47.8717503Z ./net/devlink/dev.c:703:		req->version_cb(version_name, version_type,
+2025-06-04T05:23:47.8718052Z ./net/devlink/dev.c:755:					enum devlink_info_version_type version_type)
+2025-06-04T05:23:47.8718499Z ./net/devlink/dev.c:759:					version_type);
+2025-06-04T05:23:47.8718933Z ./net/devlink/dev.c:776:					 enum devlink_info_version_type version_type)
+2025-06-04T05:23:47.8719382Z ./net/devlink/dev.c:780:					version_type);
+2025-06-04T05:23:47.8719816Z ./net/devlink/dev.c:1010:				  enum devlink_info_version_type version_type,
+2025-06-04T05:23:47.8720403Z ./net/devlink/dev.c:1015:	if (version_type != DEVLINK_INFO_VERSION_TYPE_COMPONENT ||
+2025-06-04T05:23:47.8721466Z ========= 查找 of_property_read_string =========
+2025-06-04T05:23:48.0951339Z ./arch/arm/mach-mxs/mach-mxs.c:393:	ret = of_property_read_string(root, "model", &soc_dev_attr->machine);
+2025-06-04T05:23:48.0952525Z ./arch/arm/mach-omap2/omap_device.c:149:	ret = of_property_read_string_index(node, "ti,hwmods", 0, &oh_name);
+2025-06-04T05:23:48.0953642Z ./arch/arm/mach-omap2/omap_device.c:166:		of_property_read_string_index(node, "ti,hwmods", i, &oh_name);
+2025-06-04T05:23:48.0954834Z ./arch/arm/mach-omap2/omap_hwmod.c:2091:		res = of_property_read_string_index(np, "ti,hwmods",
+2025-06-04T05:23:48.0955467Z ./arch/arm/kernel/setup.c:968:		ret = of_property_read_string(root, "serial-number",
+2025-06-04T05:23:48.0956006Z ./arch/arm/kernel/devtree.c:40:	if (of_property_read_string(node, "enable-method", &method))
+2025-06-04T05:23:48.0956636Z ./arch/um/drivers/virtio_uml.c:1175:	ret = of_property_read_string(np, "socket-path", &pdata->socket_path);
+2025-06-04T05:23:48.0957349Z ./arch/powerpc/platforms/powernv/setup.c:220:	if (of_property_read_string(dn, "version", &s) == 0 ||
+2025-06-04T05:23:48.0957995Z ./arch/powerpc/platforms/powernv/setup.c:221:	    of_property_read_string(dn, "git-id", &s) == 0)
+2025-06-04T05:23:48.0958631Z ./arch/powerpc/platforms/powernv/setup.c:224:	if (of_property_read_string(dn, "mi-version", &s) == 0)
+2025-06-04T05:23:48.0959312Z ./arch/powerpc/platforms/powernv/opal-secvar.c:113:	rc = of_property_read_string(node, "format", &format);
+2025-06-04T05:23:48.0960064Z ./arch/powerpc/platforms/powernv/idle.c:1409:	if (of_property_read_string_array(np, "ibm,cpu-idle-state-names",
+2025-06-04T05:23:48.0960748Z ./arch/powerpc/platforms/powernv/opal-psr.c:152:		if (of_property_read_string(node, "label",
+2025-06-04T05:23:48.0961466Z ./arch/powerpc/platforms/powernv/opal-irqchip.c:244:			of_property_read_string_index(opal_node, "opal-interrupts-names",
+2025-06-04T05:23:48.0962259Z ./arch/powerpc/platforms/powernv/opal-sysparam.c:243:		if (of_property_read_string_index(sysparam, "param-name", i,
+2025-06-04T05:23:48.0963248Z ./arch/powerpc/platforms/pseries/setup.c:1017:		if (of_property_read_string(dn, "model", &s) == 0)
+2025-06-04T05:23:48.0963898Z ./arch/powerpc/platforms/pseries/setup.c:1025:		if (of_property_read_string(dn, "compatible", &s) == 0)
+2025-06-04T05:23:48.0964613Z ./arch/powerpc/platforms/pseries/lparcfg.c:351:	if (of_property_read_string(of_root, "ibm,partition-name", &name))
+2025-06-04T05:23:48.0965369Z ./arch/powerpc/platforms/pseries/papr_scm.c:1426:	if (of_property_read_string(dn, "ibm,unit-guid", &uuid_str)) {
+2025-06-04T05:23:48.0966008Z ./arch/powerpc/perf/imc-pmu.c:164:	if (of_property_read_string(np, "event-name", &s))
+2025-06-04T05:23:48.0966508Z ./arch/powerpc/perf/imc-pmu.c:171:	if (of_property_read_string(np, "scale", &s))
+2025-06-04T05:23:48.0966974Z ./arch/powerpc/perf/imc-pmu.c:180:	if (of_property_read_string(np, "unit", &s))
+2025-06-04T05:23:48.0967478Z ./arch/powerpc/perf/imc-pmu.c:244:	if (of_property_read_string(node, "events-prefix", &prefix)) {
+2025-06-04T05:23:48.0968012Z ./arch/powerpc/perf/imc-pmu.c:250:	if (of_property_read_string(node, "scale", &g_scale))
+2025-06-04T05:23:48.0968500Z ./arch/powerpc/perf/imc-pmu.c:253:	if (of_property_read_string(node, "unit", &g_unit))
+2025-06-04T05:23:48.0968981Z ./arch/powerpc/perf/imc-pmu.c:1689:	if (of_property_read_string(parent, "name", &s))
+2025-06-04T05:23:48.0969485Z ./arch/sh/boards/of-generic.c:69:				of_property_read_string(np, "enable-method", &method);
+2025-06-04T05:23:48.0969999Z ./arch/sh/boards/of-generic.c:78:		of_property_read_string(np, "enable-method", &method);
+2025-06-04T05:23:48.0970504Z ./arch/sh/boards/of-generic.c:123:		of_property_read_string(root, "model", &sh_mv.mv_name);
+2025-06-04T05:23:48.0971045Z ./arch/mips/cavium-octeon/setup.c:503:		ret = of_property_read_string(root, "model", &board_type);
+2025-06-04T05:23:48.0971599Z ./arch/mips/cavium-octeon/octeon-platform.c:94:		i = of_property_read_string(uctl_node,
+2025-06-04T05:23:48.0972112Z ./arch/mips/generic/proc.c:21:	err = of_property_read_string(of_root, "model", &str);
+2025-06-04T05:23:48.0972632Z ./arch/mips/generic/proc.c:25:	err = of_property_read_string_index(of_root, "compatible", 0, &str);
+2025-06-04T05:23:48.0973308Z ./arch/riscv/kernel/cpufeature.c:503:			rc = of_property_read_string(node, "riscv,isa", &isa);
+2025-06-04T05:23:48.0973831Z ./arch/riscv/kernel/cpu.c:69:	if (of_property_read_string(node, "riscv,isa-base", &isa))
+2025-06-04T05:23:48.0974312Z ./arch/riscv/kernel/cpu.c:101:	if (of_property_read_string(node, "riscv,isa", &isa)) {
+2025-06-04T05:23:48.0974947Z ./arch/riscv/kernel/cpu.c:286:		if (!of_property_read_string(node, "compatible", &compat) &&
+2025-06-04T05:23:48.0975440Z ./include/linux/mtd/mtd.h:466:		of_property_read_string(np, "label", &mtd->name);
+2025-06-04T05:23:48.0975927Z ./include/linux/of.h:339:extern int of_property_read_string(const struct device_node *np,
+2025-06-04T05:23:48.0976459Z ./include/linux/of.h:345:extern int of_property_read_string_helper(const struct device_node *np,
+2025-06-04T05:23:48.0977018Z ./include/linux/of.h:720:static inline int of_property_read_string(const struct device_node *np,
+2025-06-04T05:23:48.0977597Z ./include/linux/of.h:734:static inline int of_property_read_string_helper(const struct device_node *np,
+2025-06-04T05:23:48.2216187Z ./include/linux/of.h:1163: * of_property_read_string_array() - Read an array of strings from a multiple
+2025-06-04T05:23:48.2217472Z ./include/linux/of.h:1175:static inline int of_property_read_string_array(const struct device_node *np,
+2025-06-04T05:23:48.2218342Z ./include/linux/of.h:1179:	return of_property_read_string_helper(np, propname, out_strs, sz, 0);
+2025-06-04T05:23:48.2219122Z ./include/linux/of.h:1198:	return of_property_read_string_helper(np, propname, NULL, 0, 0);
+2025-06-04T05:23:48.2219914Z ./include/linux/of.h:1202: * of_property_read_string_index() - Find and read a string from a multiple
+2025-06-04T05:23:48.2220780Z ./include/linux/of.h:1220:static inline int of_property_read_string_index(const struct device_node *np,
+2025-06-04T05:23:48.2221897Z ./include/linux/of.h:1224:	int rc = of_property_read_string_helper(np, propname, output, 1, index);
+2025-06-04T05:23:48.2222571Z ./android/abi_gki_aarch64_exynos:578:  of_property_read_string
+2025-06-04T05:23:48.2223384Z ./android/abi_gki_aarch64_exynos:579:  of_property_read_string_helper
+2025-06-04T05:23:48.2224009Z ./android/abi_gki_aarch64_virtual_device:682:  of_property_read_string
+2025-06-04T05:23:48.2224685Z ./android/abi_gki_aarch64.stg:394448:  name: "of_property_read_string"
+2025-06-04T05:23:48.2225285Z ./android/abi_gki_aarch64.stg:394453:  full_name: "of_property_read_string"
+2025-06-04T05:23:48.2225908Z ./android/abi_gki_aarch64.stg:394457:  name: "of_property_read_string_helper"
+2025-06-04T05:23:48.2226552Z ./android/abi_gki_aarch64.stg:394462:  full_name: "of_property_read_string_helper"
+2025-06-04T05:23:48.2227135Z ./android/abi_gki_aarch64_qcom:1292:  of_property_read_string
+2025-06-04T05:23:48.2227559Z ./android/abi_gki_aarch64_qcom:1293:  of_property_read_string_helper
+2025-06-04T05:23:48.2227990Z ./android/abi_gki_aarch64_imx:1554:  of_property_read_string
+2025-06-04T05:23:48.2228428Z ./android/abi_gki_aarch64_imx:1555:  of_property_read_string_helper
+2025-06-04T05:23:48.2228847Z ./android/abi_gki_aarch64_amlogic:1478:  of_property_read_string
+2025-06-04T05:23:48.2229272Z ./android/abi_gki_aarch64_amlogic:1479:  of_property_read_string_helper
+2025-06-04T05:23:48.2229687Z ./android/abi_gki_aarch64_lenovo:786:  of_property_read_string
+2025-06-04T05:23:48.2230096Z ./android/abi_gki_aarch64_lenovo:787:  of_property_read_string_helper
+2025-06-04T05:23:48.2230506Z ./android/abi_gki_aarch64_db845c:518:  of_property_read_string
+2025-06-04T05:23:48.2230929Z ./android/abi_gki_aarch64_db845c:519:  of_property_read_string_helper
+2025-06-04T05:23:48.2231424Z ./android/abi_gki_aarch64_mtk:1882:  of_property_read_string
+2025-06-04T05:23:48.2231820Z ./android/abi_gki_aarch64_mtk:1883:  of_property_read_string_helper
+2025-06-04T05:23:48.2232222Z ./android/abi_gki_aarch64_pixel:1445:  of_property_read_string
+2025-06-04T05:23:48.2232617Z ./android/abi_gki_aarch64_pixel:1446:  of_property_read_string_helper
+2025-06-04T05:23:48.2233215Z ./sound/soc/fsl/imx-card.c:541:		ret = of_property_read_string(np, "link-name", &link->name);
+2025-06-04T05:23:48.2233758Z ./sound/soc/fsl/fsl_easrc.c:1951:	ret = of_property_read_string(np, "firmware-name",
+2025-06-04T05:23:48.2234356Z ./sound/soc/fsl/imx-rpmsg.c:119:	if (!of_property_read_string(np, "fsl,rpmsg-channel-name", &platform_name))
+2025-06-04T05:23:48.2235181Z ./sound/soc/atmel/atmel-classd.c:63:	ret = of_property_read_string(np, "atmel,pwm-type", &pwm_type_s);
+2025-06-04T05:23:48.2235835Z ./sound/soc/atmel/atmel-classd.c:76:	ret = of_property_read_string(np, "atmel,model", &pdata->card_name);
+2025-06-04T05:23:48.2236472Z ./sound/soc/atmel/atmel-pdmic.c:64:	if (of_property_read_string(np, "atmel,model", &pdata->card_name))
+2025-06-04T05:23:48.2237211Z ./sound/soc/mediatek/common/mtk-soundcard-driver.c:66:	ret = of_property_read_string(sub_node, "mediatek,clk-provider", &str);
+2025-06-04T05:23:48.2237989Z ./sound/soc/mediatek/common/mtk-soundcard-driver.c:92:		if (of_property_read_string(sub_node, "link-name",
+2025-06-04T05:23:48.2238695Z ./sound/soc/mediatek/common/mtk-dsp-sof-common.c:168:		ret = of_property_read_string_index(np, propname, i, &dai_name);
+2025-06-04T05:23:48.2239319Z ./sound/soc/qcom/common.c:88:		ret = of_property_read_string(np, "link-name", &link->name);
+2025-06-04T05:23:48.2239855Z ./sound/soc/tegra/tegra210_admaif.c:808:		if (of_property_read_string_index(pdev->dev.of_node,
+2025-06-04T05:23:48.2240392Z ./sound/soc/tegra/tegra210_admaif.c:819:		if (of_property_read_string_index(pdev->dev.of_node,
+2025-06-04T05:23:48.2240933Z ./sound/soc/ti/davinci-mcasp.c:2039:		ret = of_property_read_string(chan->device->dev->of_node,
+2025-06-04T05:23:48.2241472Z ./sound/soc/soc-core.c:1421:	ret = of_property_read_string(of_node, "sound-name-prefix", &str);
+2025-06-04T05:23:48.2241995Z ./sound/soc/soc-core.c:2825:	ret = of_property_read_string_index(np, propname, 0, &card->name);
+2025-06-04T05:23:48.2242602Z ./sound/soc/soc-core.c:2885:		int ret = of_property_read_string_index(np, propname,
+2025-06-04T05:23:48.2243057Z ./sound/soc/soc-core.c:2909:		ret = of_property_read_string_index(np, propname,
+2025-06-04T05:23:48.2243662Z ./sound/soc/soc-core.c:2946:	ret = of_property_read_string_array(dev->of_node, prop,
+2025-06-04T05:23:48.2244117Z ./sound/soc/soc-core.c:3050:	ret = of_property_read_string(np, propname, &str);
+2025-06-04T05:23:48.2244570Z ./sound/soc/soc-core.c:3087:		int ret = of_property_read_string_index(np, propname,
+2025-06-04T05:23:48.2760158Z ./sound/soc/soc-core.c:3095:		ret = of_property_read_string_index(np, propname,
+2025-06-04T05:23:48.2761024Z ./sound/soc/soc-core.c:3220:	ret = of_property_read_string(np, "dai-format", &str);
+2025-06-04T05:23:48.2761808Z ./sound/soc/soc-core.c:3223:		ret = of_property_read_string(np, prop, &str);
+2025-06-04T05:23:48.2762676Z ./sound/soc/codecs/ak4642.c:619:	of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2763881Z ./sound/soc/codecs/sta350.c:1117:	if (!of_property_read_string(np, "st,ffx-power-output-mode",
+2025-06-04T05:23:48.2764910Z ./sound/soc/codecs/lpass-wsa-macro.c:2353:	of_property_read_string(dev_of_node(dev), "clock-output-names",
+2025-06-04T05:23:48.2765919Z ./sound/soc/codecs/peb2466.c:1562:	ret = of_property_read_string(peb2466->spi->dev.of_node,
+2025-06-04T05:23:48.2766913Z ./sound/soc/codecs/lpass-va-macro.c:1383:	of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2767938Z ./sound/soc/codecs/da7218.c:2467:	if (!of_property_read_string(np, "dlg,mic1-amp-in-sel", &of_str))
+2025-06-04T05:23:48.2768907Z ./sound/soc/codecs/da7218.c:2473:	if (!of_property_read_string(np, "dlg,mic2-amp-in-sel", &of_str))
+2025-06-04T05:23:48.2769863Z ./sound/soc/codecs/da7218.c:2479:	if (!of_property_read_string(np, "dlg,dmic1-data-sel", &of_str))
+2025-06-04T05:23:48.2770845Z ./sound/soc/codecs/da7218.c:2484:	if (!of_property_read_string(np, "dlg,dmic1-samplephase", &of_str))
+2025-06-04T05:23:48.2771811Z ./sound/soc/codecs/da7218.c:2495:	if (!of_property_read_string(np, "dlg,dmic2-data-sel", &of_str))
+2025-06-04T05:23:48.2772790Z ./sound/soc/codecs/da7218.c:2500:	if (!of_property_read_string(np, "dlg,dmic2-samplephase", &of_str))
+2025-06-04T05:23:48.2773937Z ./sound/soc/codecs/wcd934x.c:2170:	of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2774874Z ./sound/soc/sti/sti_uniperif.c:434:		if (!of_property_read_string(node, "st,tdm-mode", &mode))
+2025-06-04T05:23:48.2776149Z ./sound/soc/generic/simple-card-utils.c:63:	of_property_read_string(np, prop, &data->convert_sample_format);
+2025-06-04T05:23:48.2777229Z ./drivers/iio/adc/stm32-dfsdm-adc.c:623:	ret = of_property_read_string_index(indio_dev->dev.of_node,
+2025-06-04T05:23:48.2778217Z ./drivers/iio/adc/stm32-dfsdm-adc.c:636:	ret = of_property_read_string_index(indio_dev->dev.of_node,
+2025-06-04T05:23:48.2779200Z ./drivers/iio/adc/stm32-dfsdm-adc.c:648:	ret = of_property_read_string_index(indio_dev->dev.of_node,
+2025-06-04T05:23:48.2780188Z ./drivers/iio/adc/stm32-adc-core.c:683:		ret = of_property_read_string(child, "compatible", &compat);
+2025-06-04T05:23:48.2781186Z ./drivers/iio/adc/stm32-dfsdm-core.c:333:		ret = of_property_read_string(child, "compatible", &compat);
+2025-06-04T05:23:48.2782243Z ./drivers/iio/adc/ad4130.c:1842:	of_property_read_string(of_node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2783422Z ./drivers/iio/adc/at91_adc.c:1042:	    !of_property_read_string(node, "atmel,adc-use-res", (const char **)&s)
+2025-06-04T05:23:48.2784470Z ./drivers/clk/imx/clk-imx8qxp-lpcg.c:232:	ret = of_property_read_string_array(np, "clock-output-names",
+2025-06-04T05:23:48.2785586Z ./drivers/clk/versatile/clk-vexpress-osc.c:86:	if (of_property_read_string(pdev->dev.of_node, "clock-output-names",
+2025-06-04T05:23:48.2786690Z ./drivers/clk/versatile/clk-impd1.c:88:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2787870Z ./drivers/clk/clk-highbank.c:288:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2788765Z ./drivers/clk/clk-max9485.c:301:		if (of_property_read_string_index(dev->of_node,
+2025-06-04T05:23:48.2789615Z ./drivers/clk/clk-nspire.c:81:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2790549Z ./drivers/clk/clk-nspire.c:122:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2791476Z ./drivers/clk/qcom/clk-spmi-pmic-div.c:263:			ret = of_property_read_string_index(of_node,
+2025-06-04T05:23:48.2792446Z ./drivers/clk/qcom/gdsc-regulator.c:846:	ret = of_property_read_string(dev->of_node, "regulator-name",
+2025-06-04T05:23:48.2793747Z ./drivers/clk/qcom/gdsc-regulator.c:1024:		of_property_read_string_index(dev->of_node, "clock-names", i,
+2025-06-04T05:23:48.2794874Z ./drivers/clk/qcom/gdsc-regulator.c:1047:		of_property_read_string_index(dev->of_node, "interconnect-names", i,
+2025-06-04T05:23:48.2795925Z ./drivers/clk/qcom/gdsc-regulator.c:1075:			of_property_read_string_index(pdev->dev.of_node,
+2025-06-04T05:23:48.2796888Z ./drivers/clk/qcom/hfpll.c:80:	if (of_property_read_string_index(dev->of_node, "clock-output-names",
+2025-06-04T05:23:48.2797797Z ./drivers/clk/qcom/kpss-xcc.c:49:		if (of_property_read_string_index(dev->of_node,
+2025-06-04T05:23:48.2798702Z ./drivers/clk/qcom/clk-dummy.c:124:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2799754Z ./drivers/clk/socfpga/clk-gate-a10.c:86:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2800778Z ./drivers/clk/socfpga/clk-pll.c:97:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2814181Z ./drivers/clk/socfpga/clk-periph-a10.c:96:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2815317Z ./drivers/clk/socfpga/clk-periph.c:86:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2816382Z ./drivers/clk/socfpga/clk-gate.c:185:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2817425Z ./drivers/clk/socfpga/clk-pll-a10.c:91:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2818408Z ./drivers/clk/clk-cs2000-cp.c:472:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2819388Z ./drivers/clk/clk-fsl-flexspi.c:78:	of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2820570Z ./drivers/clk/at91/dt-compat.c:161:		if (of_property_read_string(np, "clock-output-names", &name))
+2025-06-04T05:23:48.2821516Z ./drivers/clk/at91/dt-compat.c:262:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2822439Z ./drivers/clk/at91/dt-compat.c:290:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2823522Z ./drivers/clk/at91/dt-compat.c:318:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2824447Z ./drivers/clk/at91/dt-compat.c:355:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2825356Z ./drivers/clk/at91/dt-compat.c:410:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2826296Z ./drivers/clk/at91/dt-compat.c:488:		if (of_property_read_string(np, "clock-output-names", &name))
+2025-06-04T05:23:48.2827241Z ./drivers/clk/at91/dt-compat.c:655:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2828179Z ./drivers/clk/at91/dt-compat.c:718:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2829124Z ./drivers/clk/at91/dt-compat.c:769:		if (of_property_read_string(np, "clock-output-names", &name))
+2025-06-04T05:23:48.2830063Z ./drivers/clk/at91/dt-compat.c:823:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2830975Z ./drivers/clk/at91/dt-compat.c:853:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2831908Z ./drivers/clk/at91/dt-compat.c:898:		if (of_property_read_string(np, "clock-output-names", &name))
+2025-06-04T05:23:48.2833015Z ./drivers/clk/at91/dt-compat.c:940:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2834074Z ./drivers/clk/at91/dt-compat.c:970:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2835000Z ./drivers/clk/at91/dt-compat.c:1004:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2835930Z ./drivers/clk/at91/dt-compat.c:1032:	of_property_read_string(np, "clock-output-names", &name);
+2025-06-04T05:23:48.2836897Z ./drivers/clk/clk-si570.c:447:	if (of_property_read_string(client->dev.of_node, "clock-output-names",
+2025-06-04T05:23:48.2837837Z ./drivers/clk/zynq/clkc.c:232:		if (of_property_read_string_index(np, "clock-output-names",
+2025-06-04T05:23:48.2838781Z ./drivers/clk/clk-hi655x.c:90:	of_property_read_string_index(parent->of_node, "clock-output-names",
+2025-06-04T05:23:48.2839771Z ./drivers/clk/nxp/clk-lpc18xx-ccu.c:292:		ret = of_property_read_string_index(np, "clock-names", i,
+2025-06-04T05:23:48.2840794Z ./drivers/clk/clk-fixed-factor.c:267:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2841767Z ./drivers/clk/clk.c:5416:	if (of_property_read_string_index(clkspec.np, "clock-output-names",
+2025-06-04T05:23:48.2842735Z ./drivers/clk/clk-axi-clkgen.c:543:	of_property_read_string(pdev->dev.of_node, "clock-output-names",
+2025-06-04T05:23:48.2843848Z ./drivers/clk/clk-bulk.c:27:		of_property_read_string_index(np, "clock-names", i, &clks[i].id);
+2025-06-04T05:23:48.2844789Z ./drivers/clk/clk-vt8500.c:268:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2845732Z ./drivers/clk/clk-vt8500.c:698:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2846642Z ./drivers/clk/clk-scpi.c:221:		if (of_property_read_string_index(np, "clock-output-names",
+2025-06-04T05:23:48.2847578Z ./drivers/clk/clk-si5341.c:1615:	if (of_property_read_string(client->dev.of_node, "clock-output-names",
+2025-06-04T05:23:48.2848606Z ./drivers/clk/tegra/clk-dfll.c:1917:	if (of_property_read_string(td->dev->of_node, "clock-output-names",
+2025-06-04T05:23:48.2849594Z ./drivers/clk/clk-rk808.c:174:	of_property_read_string_index(dev->of_node, "clock-output-names",
+2025-06-04T05:23:48.2850539Z ./drivers/clk/clk-rk808.c:186:	of_property_read_string_index(dev->of_node, "clock-output-names",
+2025-06-04T05:23:48.2851507Z ./drivers/clk/clk-fixed-mmio.c:34:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2852646Z ./drivers/clk/clk-si514.c:346:	if (of_property_read_string(client->dev.of_node, "clock-output-names",
+2025-06-04T05:23:48.2853730Z ./drivers/clk/clk-bd718x7.c:128:	of_property_read_string_index(parent->of_node,
+2025-06-04T05:23:48.2854726Z ./drivers/clk/nuvoton/clk-ma35d1.c:445:		if (of_property_read_string_index(clk_node, "nuvoton,pll-mode", i, &of_str))
+2025-06-04T05:23:48.2855823Z ./drivers/clk/keystone/pll.c:256:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2856852Z ./drivers/clk/keystone/pll.c:306:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2857839Z ./drivers/clk/keystone/gate.c:231:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2858820Z ./drivers/clk/ti/clkctrl.c:480:	if (!of_property_read_string_index(np, "clock-output-names", 0,
+2025-06-04T05:23:48.2859728Z ./drivers/clk/ti/fapll.c:614:		if (of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.2860588Z ./drivers/clk/ti/clk.c:133:		if (of_property_read_string_index(np, "clock-output-names",
+2025-06-04T05:23:48.2861433Z ./drivers/clk/ti/clk.c:455:	if (!of_property_read_string_index(np, "clock-output-names", 0,
+2025-06-04T05:23:48.2862229Z ./drivers/clk/ti/adpll.c:181:		err = of_property_read_string_index(d->np,
+2025-06-04T05:23:48.2862954Z ./drivers/clk/ti/adpll.c:589:	err = of_property_read_string_index(d->np,
+2025-06-04T05:23:48.2863944Z ./drivers/clk/clk-pwm.c:116:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2865162Z ./drivers/clk/clk-s2mps11.c:114:		of_property_read_string_index(clk_np, "clock-output-names", i,
+2025-06-04T05:23:48.2866051Z ./drivers/clk/clk-max77686.c:223:		    !of_property_read_string_index(parent->of_node,
+2025-06-04T05:23:48.2866968Z ./drivers/clk/davinci/psc.c:103:	if (!of_property_read_string(dev->of_node, "compatible", &compatible))
+2025-06-04T05:23:48.2868034Z ./drivers/clk/clk-versaclock7.c:1125:	if (of_property_read_string(client->dev.of_node, "clock-output-names",
+2025-06-04T05:23:48.2869043Z ./drivers/clk/clk-moxart.c:25:	of_property_read_string(node, "clock-output-names", &name);
+2025-06-04T05:23:48.2869934Z ./drivers/clk/clk-moxart.c:65:	of_property_read_string(node, "clock-output-names", &name);
+2025-06-04T05:23:48.2870757Z ./drivers/clk/st/clkgen-pll.c:800:			if (of_property_read_string_index(np,
+2025-06-04T05:23:48.2871513Z ./drivers/clk/st/clkgen-fsyn.c:950:			if (of_property_read_string_index(np,
+2025-06-04T05:23:48.2872276Z ./drivers/clk/st/clk-flexgen.c:710:			if (of_property_read_string_index(np,
+2025-06-04T05:23:48.2873291Z ./drivers/clk/clk-xgene.c:181:	of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2874208Z ./drivers/clk/clk-xgene.c:402:	of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2875114Z ./drivers/clk/clk-xgene.c:719:	of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2876083Z ./drivers/clk/renesas/clk-r8a7779.c:150:		of_property_read_string_index(np, "clock-output-names", i,
+2025-06-04T05:23:48.2877105Z ./drivers/clk/renesas/clk-sh73a0.c:202:		of_property_read_string_index(np, "clock-output-names", i,
+2025-06-04T05:23:48.2878143Z ./drivers/clk/renesas/clk-r8a73a4.c:224:		of_property_read_string_index(np, "clock-output-names", i,
+2025-06-04T05:23:48.2879156Z ./drivers/clk/renesas/clk-div6.c:348:	of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2880161Z ./drivers/clk/renesas/clk-mstp.c:222:		ret = of_property_read_string_index(np, "clock-output-names",
+2025-06-04T05:23:48.2881157Z ./drivers/clk/renesas/clk-r8a7740.c:183:		of_property_read_string_index(np, "clock-output-names", i,
+2025-06-04T05:23:48.2882233Z ./drivers/clk/renesas/clk-rz.c:107:		of_property_read_string_index(np, "clock-output-names", i, &name);
+2025-06-04T05:23:48.2883392Z ./drivers/clk/renesas/clk-r8a7778.c:112:		of_property_read_string_index(np, "clock-output-names", i,
+2025-06-04T05:23:48.2884786Z ./drivers/clk/mvebu/common.c:135:	of_property_read_string_index(np, "clock-output-names", 0,
+2025-06-04T05:23:48.2885730Z ./drivers/clk/mvebu/common.c:143:	of_property_read_string_index(np, "clock-output-names", 1,
+2025-06-04T05:23:48.2886651Z ./drivers/clk/mvebu/common.c:160:		of_property_read_string_index(np, "clock-output-names",
+2025-06-04T05:23:48.2887550Z ./drivers/clk/mvebu/common.c:171:		of_property_read_string_index(np, "clock-output-names",
+2025-06-04T05:23:48.2888606Z ./drivers/clk/mvebu/armada-37xx-xtal.c:59:	of_property_read_string_index(np, "clock-output-names", 0, &xtal_name);
+2025-06-04T05:23:48.2889709Z ./drivers/clk/mvebu/clk-corediv.c:284:		of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.2890709Z ./drivers/clk/clk-si544.c:480:	if (of_property_read_string(client->dev.of_node, "clock-output-names",
+2025-06-04T05:23:48.2891720Z ./drivers/clk/samsung/clk-exynos5-subcmu.c:163:		if (of_property_read_string(np, "label", &name) < 0)
+2025-06-04T05:23:48.2892761Z ./drivers/clk/sunxi/clk-a10-mod1.c:43:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2893938Z ./drivers/clk/sunxi/clk-a10-ve.c:108:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2894979Z ./drivers/clk/sunxi/clk-sun8i-mbus.c:59:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.2895997Z ./drivers/clk/sunxi/clk-mod0.c:339:		if (of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.2897167Z ./drivers/clk/sunxi/clk-a10-pll2.c:120:	of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.2898138Z ./drivers/clk/sunxi/clk-a10-pll2.c:135:	of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4453477Z ./drivers/clk/sunxi/clk-a10-pll2.c:144:	of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4454613Z ./drivers/clk/sunxi/clk-a10-pll2.c:153:	of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4455730Z ./drivers/clk/sunxi/clk-a10-codec.c:24:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4456798Z ./drivers/clk/sunxi/clk-sun8i-bus-gates.c:62:		of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4457925Z ./drivers/clk/sunxi/clk-a20-gmac.c:61:	if (of_property_read_string(node, "clock-output-names", &clk_name))
+2025-06-04T05:23:48.4458979Z ./drivers/clk/sunxi/clk-sunxi.c:667:	if (of_property_read_string(node, "clock-output-names", &clk_name)) {
+2025-06-04T05:23:48.4460051Z ./drivers/clk/sunxi/clk-sunxi.c:791:	if (of_property_read_string(node, "clock-output-names", &clk_name)) {
+2025-06-04T05:23:48.4461063Z ./drivers/clk/sunxi/clk-sunxi.c:968:			of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4462038Z ./drivers/clk/sunxi/clk-sunxi.c:977:		of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4463006Z ./drivers/clk/sunxi/clk-sunxi.c:1020:		if (of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4464182Z ./drivers/clk/sunxi/clk-sun6i-apb0.c:46:	of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4465239Z ./drivers/clk/sunxi/clk-sun4i-pll3.c:31:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4466339Z ./drivers/clk/sunxi/clk-sun4i-tcon-ch1.c:235:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4467471Z ./drivers/clk/sunxi/clk-sun4i-display.c:115:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4468540Z ./drivers/clk/sunxi/clk-a10-hosc.c:36:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4469581Z ./drivers/clk/sunxi/clk-factors.c:201:		of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4470634Z ./drivers/clk/sunxi/clk-sun6i-apb0-gates.c:75:		of_property_read_string_index(np, "clock-output-names",
+2025-06-04T05:23:48.4471686Z ./drivers/clk/sunxi/clk-sun8i-apb0.c:34:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4473336Z ./drivers/clk/sunxi/clk-simple-gates.c:51:		of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4474407Z ./drivers/clk/sunxi/clk-sun9i-cpus.c:201:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4475412Z ./drivers/clk/sunxi/clk-usb.c:125:		of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4476402Z ./drivers/clk/sunxi/clk-sun9i-mmc.c:144:		of_property_read_string_index(np, "clock-output-names",
+2025-06-04T05:23:48.4477431Z ./drivers/clk/bcm/clk-iproc-asiu.c:214:		ret = of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4478457Z ./drivers/clk/bcm/clk-iproc-pll.c:777:	ret = of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4479476Z ./drivers/clk/bcm/clk-iproc-pll.c:808:		ret = of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.4480506Z ./drivers/clk/clk-fixed-rate.c:173:	of_property_read_string(node, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.4481447Z ./drivers/clk/clk-lmk04832.c:1322:	if (of_property_read_string_index(lmk->dev->of_node,
+2025-06-04T05:23:48.4482488Z ./drivers/input/misc/qpnp-power-on.c:2062:	rc = of_property_read_string(dev->of_node, "qcom,s3-src", &src_name);
+2025-06-04T05:23:48.4483731Z ./drivers/iommu/arm/arm-smmu/arm-smmu-qcom.c:1973:	if (of_property_read_string(np, "qcom,iommu-dma", &str))
+2025-06-04T05:23:48.4484979Z ./drivers/iommu/arm/arm-smmu/arm-smmu.c:2003:	ret = of_property_read_string(np, "qcom,iommu-dma", &str);
+2025-06-04T05:23:48.4486042Z ./drivers/iommu/arm/arm-smmu/arm-smmu.c:2051:	ret = of_property_read_string(np, "qcom,iommu-pagetable", &str);
+2025-06-04T05:23:48.4487098Z ./drivers/iommu/qcom-iommu-debug.c:173:	if (of_property_read_string(child, "qcom,iommu-dma", &str))
+2025-06-04T05:23:48.4488112Z ./drivers/gpu/drm/imx/ipuv3/imx-ldb.c:508:	ret = of_property_read_string(np, "fsl,data-mapping", &bm);
+2025-06-04T05:23:48.4489243Z ./drivers/gpu/drm/imx/ipuv3/parallel-display.c:336:	ret = of_property_read_string(np, "interface-pix-fmt", &fmt);
+2025-06-04T05:23:48.4490335Z ./drivers/gpu/drm/imx/ipuv3/imx-tve.c:471:	ret = of_property_read_string(np, "fsl,tve-mode", &bm);
+2025-06-04T05:23:48.4491440Z ./drivers/gpu/drm/rockchip/rockchip_lvds.c:587:	if (of_property_read_string(dev->of_node, "rockchip,output", &name))
+2025-06-04T05:23:48.4492615Z ./drivers/gpu/drm/rockchip/rockchip_lvds.c:599:	if (of_property_read_string(remote, "data-mapping", &name))
+2025-06-04T05:23:48.4493797Z ./drivers/gpu/drm/drm_of.c:422:	ret = of_property_read_string(port, "data-mapping", &mapping);
+2025-06-04T05:23:48.4494871Z ./drivers/gpu/drm/bridge/adv7511/adv7511_drv.c:1121:	ret = of_property_read_string(np, "adi,input-colorspace", &str);
+2025-06-04T05:23:48.5384454Z ./drivers/gpu/drm/bridge/adv7511/adv7511_drv.c:1134:	ret = of_property_read_string(np, "adi,input-clock", &str);
+2025-06-04T05:23:48.5385741Z ./drivers/gpu/drm/bridge/adv7511/adv7511_drv.c:1157:		ret = of_property_read_string(np, "adi,input-justification",
+2025-06-04T05:23:48.5386909Z ./drivers/gpu/drm/bridge/display-connector.c:243:		ret = of_property_read_string(pdev->dev.of_node, "type",
+2025-06-04T05:23:48.5388063Z ./drivers/gpu/drm/bridge/display-connector.c:274:	of_property_read_string(pdev->dev.of_node, "label", &label);
+2025-06-04T05:23:48.5389091Z ./drivers/gpu/drm/bridge/lt9611uxc.c:1064:		rc = of_property_read_string(supply_node,
+2025-06-04T05:23:48.5390008Z ./drivers/gpu/drm/bridge/lt9611uxc.c:1375:		if (!of_property_read_string(pdata->dev->of_node,
+2025-06-04T05:23:48.5390960Z ./drivers/gpu/drm/sun4i/sun4i_tcon_dclk.c:173:	ret = of_property_read_string_index(dev->of_node,
+2025-06-04T05:23:48.5391910Z ./drivers/gpu/drm/sun4i/sun8i_tcon_top.c:112:	ret = of_property_read_string_index(dev->of_node,
+2025-06-04T05:23:48.5392918Z ./drivers/gpu/drm/tilcdc/tilcdc_drv.c:280:		of_property_read_string(node, "blue-and-red-wiring", &str);
+2025-06-04T05:23:48.5394695Z ./drivers/gpu/drm/tiny/panel-mipi-dbi.c:147:	ret = of_property_read_string_index(dev->of_node, "compatible", 0, &compatible);
+2025-06-04T05:23:48.5395825Z ./drivers/gpu/drm/tiny/simpledrm.c:136:	int ret = of_property_read_string(of_node, name, value);
+2025-06-04T05:23:48.5396811Z ./drivers/gpu/drm/omapdrm/dss/base.c:221:	ret = of_property_read_string(node, "compatible", &compat);
+2025-06-04T05:23:48.5397775Z ./drivers/gpu/drm/msm/dp/dp_parser.c:167:		rc = of_property_read_string_index(dev->of_node,
+2025-06-04T05:23:48.5398749Z ./drivers/gpu/drm/msm/dp/dp_parser.c:253:		rc = of_property_read_string_index(dev->of_node, "clock-names",
+2025-06-04T05:23:48.5399969Z ./drivers/gpu/drm/msm/adreno/adreno_device.c:620:	ret = of_property_read_string_index(node, "compatible", 0, &compat);
+2025-06-04T05:23:48.5401205Z ./drivers/gpu/drm/msm/adreno/adreno_gpu.c:82:	of_property_read_string_index(np, "firmware-name", 0, &signed_fwname);
+2025-06-04T05:23:48.5402386Z ./drivers/gpu/drm/logicvc/logicvc_of.c:144:		ret = of_property_read_string(of_node, property->name, &string);
+2025-06-04T05:23:48.5403603Z ./drivers/gpu/drm/panel/panel-lvds.c:144:	of_property_read_string(np, "label", &lvds->label);
+2025-06-04T05:23:48.5404623Z ./drivers/memory/atmel-ebi.c:209:	of_property_read_string(np, "atmel,smc-byte-access-type", &tmp_str);
+2025-06-04T05:23:48.5405633Z ./drivers/memory/atmel-ebi.c:216:	of_property_read_string(np, "atmel,smc-read-mode", &tmp_str);
+2025-06-04T05:23:48.5406609Z ./drivers/memory/atmel-ebi.c:223:	of_property_read_string(np, "atmel,smc-write-mode", &tmp_str);
+2025-06-04T05:23:48.5407759Z ./drivers/memory/atmel-ebi.c:230:	of_property_read_string(np, "atmel,smc-exnw-mode", &tmp_str);
+2025-06-04T05:23:48.5408738Z ./drivers/fpga/of-fpga-region.c:162:		if (!of_property_read_string(child_region, "firmware-name",
+2025-06-04T05:23:48.5409668Z ./drivers/fpga/of-fpga-region.c:233:	if (!of_property_read_string(overlay, "firmware-name",
+2025-06-04T05:23:48.5410568Z ./drivers/staging/most/dim2/dim2.c:768:	ret = of_property_read_string(pdev->dev.of_node,
+2025-06-04T05:23:48.5411706Z ./drivers/staging/media/deprecated/atmel/atmel-isc-clk.c:252:		of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.5412883Z ./drivers/ufs/host/ufs-qcom.c:3378:	ret = of_property_read_string(host->np, "alg-name", &alg_name);
+2025-06-04T05:23:48.5414018Z ./drivers/ufs/host/ufshcd-pltfrm.c:82:		ret = of_property_read_string_index(np,	"clock-names", i/2,
+2025-06-04T05:23:48.5414957Z ./drivers/gpio/gpiolib-of.c:732:	if (name && of_property_read_string(np, "line-name", name))
+2025-06-04T05:23:48.5415788Z ./drivers/gpio/gpiolib-of.c:1024:				of_property_read_string_index(np,
+2025-06-04T05:23:48.5416528Z ./drivers/gpio/gpiolib-of.c:1055:			ret = of_property_read_string_index(np,
+2025-06-04T05:23:48.5417455Z ./drivers/usb/dwc3/dwc3-msm-core.c:5434:	ret = of_property_read_string(mdwc->dev->of_node, "qcom,dbm-version",
+2025-06-04T05:23:48.5418576Z ./drivers/usb/dwc3/dwc3-msm-core.c:5970:	ret = of_property_read_string(dwc3_node, "maximum-speed", &prop_string);
+2025-06-04T05:23:48.5419683Z ./drivers/usb/dwc3/dwc3-msm-core.c:5976:	ret = of_property_read_string(dwc3_node, "dr_mode", &prop_string);
+2025-06-04T05:23:48.5420767Z ./drivers/usb/dwc3/dwc3-octeon.c:428:	if (of_property_read_string(node, "refclk-type-ss", &ss_clock_type)) {
+2025-06-04T05:23:48.5421862Z ./drivers/usb/dwc3/dwc3-octeon.c:432:	if (of_property_read_string(node, "refclk-type-hs", &hs_clock_type)) {
+2025-06-04T05:23:48.5422904Z ./drivers/usb/common/common.c:312:	err = of_property_read_string(controller, "dr_mode", &dr_mode);
+2025-06-04T05:23:48.5424174Z ./drivers/usb/misc/brcmstb-usb-pinmap.c:147:		res = of_property_read_string_index(dn, "brcm,in-functions", x,
+2025-06-04T05:23:48.5425308Z ./drivers/usb/misc/brcmstb-usb-pinmap.c:179:		res = of_property_read_string_index(dn, "brcm,out-functions", x,
+2025-06-04T05:23:48.5426283Z ./drivers/usb/host/octeon-hcd.c:3577:	i = of_property_read_string(usbn_node,
+2025-06-04T05:23:48.5538256Z ./drivers/usb/host/octeon-hcd.c:3580:		i = of_property_read_string(usbn_node,
+2025-06-04T05:23:48.5539438Z ./drivers/usb/musb/musb_cppi41.c:686:		ret = of_property_read_string_index(np, "dma-names", i, &str);
+2025-06-04T05:23:48.5540354Z ./drivers/usb/phy/of.c:33:	err = of_property_read_string(np, "phy_type", &phy_type);
+2025-06-04T05:23:48.5541258Z ./drivers/soc/imx/soc-imx.c:50:	ret = of_property_read_string(root, "model", &soc_dev_attr->machine);
+2025-06-04T05:23:48.5542273Z ./drivers/soc/imx/soc-imx8m.c:202:	ret = of_property_read_string(of_root, "model", &soc_dev_attr->machine);
+2025-06-04T05:23:48.5543531Z ./drivers/soc/versatile/soc-realview.c:100:	ret = of_property_read_string(np, "compatible",
+2025-06-04T05:23:48.5544417Z ./drivers/soc/fsl/guts.c:220:	if (of_property_read_string(of_root, "model", &machine))
+2025-06-04T05:23:48.5545303Z ./drivers/soc/fsl/guts.c:221:		of_property_read_string_index(of_root, "compatible", 0, &machine);
+2025-06-04T05:23:48.5546302Z ./drivers/soc/fsl/qe/qmc.c:869:		ret = of_property_read_string(chan_np, "fsl,operational-mode", &mode);
+2025-06-04T05:23:48.5547288Z ./drivers/soc/qcom/apr.c:465:	ret = of_property_read_string_index(np, "qcom,protection-domain",
+2025-06-04T05:23:48.5548227Z ./drivers/soc/qcom/apr.c:493:		ret = of_property_read_string_index(node, "qcom,protection-domain",
+2025-06-04T05:23:48.5549182Z ./drivers/soc/qcom/apr.c:498:		ret = of_property_read_string_index(node, "qcom,protection-domain",
+2025-06-04T05:23:48.5550128Z ./drivers/soc/qcom/apr.c:540:		ret = of_property_read_string_index(node, "qcom,protection-domain",
+2025-06-04T05:23:48.5551221Z ./drivers/soc/qcom/dcc_v2.c:1901:	ret = of_property_read_string(np, "qcom,data-sink",
+2025-06-04T05:23:48.5552282Z ./drivers/soc/qcom/mem_buf/mem-buf-gh.c:1621:		ret = of_property_read_string_index(dev->of_node, "qcom,msgq-names", i, &name);
+2025-06-04T05:23:48.5553566Z ./drivers/soc/qcom/smp2p.c:637:		ret = of_property_read_string(node, "qcom,entry-name", &entry->name);
+2025-06-04T05:23:48.5554551Z ./drivers/soc/qcom/qsee_ipc_irq_bridge.c:341:	ret = of_property_read_string(node, key, &dev_name);
+2025-06-04T05:23:48.5555531Z ./drivers/soc/qcom/qsee_ipc_irq_bridge.c:349:	ret = of_property_read_string(node, key, &subsys_name);
+2025-06-04T05:23:48.5556627Z ./drivers/soc/qcom/rpm_master_stats.c:114:		ret = of_property_read_string_index(dev->of_node, "qcom,master-names", i,
+2025-06-04T05:23:48.5557730Z ./drivers/soc/qcom/glink_probe.c:124:	ret = of_property_read_string(np, "label", &einfo->ssr_label);
+2025-06-04T05:23:48.5558680Z ./drivers/soc/qcom/glink_probe.c:128:	ret = of_property_read_string(np, "qcom,glink-label",
+2025-06-04T05:23:48.5559621Z ./drivers/soc/qcom/glink_probe.c:139:	ret = of_property_read_string(np, "transport", &transport);
+2025-06-04T05:23:48.5560626Z ./drivers/soc/qcom/wcnss_ctrl.c:213:	ret = of_property_read_string(dev->of_node, "firmware-name", &nvbin);
+2025-06-04T05:23:48.5561639Z ./drivers/soc/qcom/slatecom_interface.c:447:	ret = of_property_read_string(pdev->dev.of_node,
+2025-06-04T05:23:48.5562636Z ./drivers/soc/qcom/slatecom_interface.c:494:		ret = of_property_read_string_index(np, "clock-names", 0,
+2025-06-04T05:23:48.5563852Z ./drivers/soc/qcom/memshare/msm_memshare.c:728:	rc = of_property_read_string(pdev->dev.of_node, "label",
+2025-06-04T05:23:48.5564921Z ./drivers/soc/qcom/qfprom-sys.c:77:	ret = of_property_read_string_array(dev->of_node, "nvmem-cell-names",
+2025-06-04T05:23:48.5565998Z ./drivers/soc/qcom/dcvs/bwprof.c:399:	ret = of_property_read_string(dev->of_node, QCOM_BWPROF_CLIENT_PROP,
+2025-06-04T05:23:48.5567034Z ./drivers/soc/qcom/dcvs/dcvs_fp.c:99:	ret = of_property_read_string(dev->of_node, of_prop, &bcm_name);
+2025-06-04T05:23:48.5568020Z ./drivers/soc/qcom/qcom_stats.c:1052:		of_property_read_string_index(node, "ss-name", i, &name);
+2025-06-04T05:23:48.5568963Z ./drivers/soc/qcom/qcom_stats.c:1172:		of_property_read_string_index(node, "ss-name", i, &name);
+2025-06-04T05:23:48.5569928Z ./drivers/soc/qcom/mpam/platform_mpam.c:272:		of_property_read_string_index(np, "qcom,gears", i,
+2025-06-04T05:23:48.5570951Z ./drivers/soc/qcom/mpam/platform_mpam.c:279:	of_property_read_string(np, "qcom,msc-name", &msc_name_dt);
+2025-06-04T05:23:48.5572242Z ./drivers/soc/qcom/mpam/platform_mpam.c:301:		of_property_read_string(node, "qcom,client-name", &msc_name_dt);
+2025-06-04T05:23:48.5573485Z ./drivers/soc/qcom/mpam/cpu_mpam.c:600:		of_property_read_string(node, "qcom,msc-name", &msc_name_dt);
+2025-06-04T05:23:48.5574512Z ./drivers/soc/qcom/mpam/slc_mpam.c:341:	of_property_read_string(np, "qcom,msc-name", &msc_name_dt);
+2025-06-04T05:23:48.5575555Z ./drivers/soc/qcom/mpam/slc_mpam.c:351:		of_property_read_string(node, "qcom,client-name", &msc_name_dt);
+2025-06-04T05:23:48.5576673Z ./drivers/soc/qcom/mpam/mpam_msc_slc.c:557:		ret = of_property_read_string_index(node, "qcom,slc_clients", client_idx,
+2025-06-04T05:23:48.5577814Z ./drivers/soc/qcom/mpam/mpam_msc_slc.c:630:	of_property_read_string(node, "qcom,msc-name", &qcom_msc->msc_name);
+2025-06-04T05:23:48.5578948Z ./drivers/soc/qcom/qti_pmic_glink.c:602:	rc = of_property_read_string(dev->of_node, "qcom,pmic-glink-channel",
+2025-06-04T05:23:48.5579997Z ./drivers/soc/qcom/qti_pmic_glink.c:615:	of_property_read_string(dev->of_node, "qcom,subsys-name",
+2025-06-04T05:23:48.6033564Z ./drivers/soc/qcom/qti_pmic_glink.c:619:		rc = of_property_read_string_index(dev->of_node,
+2025-06-04T05:23:48.6034506Z ./drivers/soc/qcom/qti_pmic_glink.c:632:		rc = of_property_read_string_index(dev->of_node,
+2025-06-04T05:23:48.6035507Z ./drivers/soc/amlogic/meson-mx-socinfo.c:156:	of_property_read_string(np, "model", &soc_dev_attr->machine);
+2025-06-04T05:23:48.6036821Z ./drivers/soc/ti/wkup_m3_ipc.c:685:	ret = of_property_read_string(np, "firmware-name",
+2025-06-04T05:23:48.6037719Z ./drivers/soc/ti/k3-socinfo.c:120:	of_property_read_string(node, "model", &soc_dev_attr->machine);
+2025-06-04T05:23:48.6038648Z ./drivers/soc/ti/knav_qmss_queue.c:1069:	if (of_property_read_string(node, "label", &name) < 0)
+2025-06-04T05:23:48.6039632Z ./drivers/soc/renesas/renesas-soc.c:479:	of_property_read_string(np, "model", &soc_dev_attr->machine);
+2025-06-04T05:23:48.6040728Z ./drivers/soc/samsung/exynos-chipid.c:128:	of_property_read_string(root, "model", &soc_dev_attr->machine);
+2025-06-04T05:23:48.6041751Z ./drivers/soc/aspeed/aspeed-socinfo.c:125:	of_property_read_string(np, "model", &machine);
+2025-06-04T05:23:48.6042722Z ./drivers/soc/loongson/loongson2_guts.c:114:	if (of_property_read_string(root, "model", &machine))
+2025-06-04T05:23:48.6043968Z ./drivers/soc/loongson/loongson2_guts.c:115:		of_property_read_string_index(root, "compatible", 0, &machine);
+2025-06-04T05:23:48.6045006Z ./drivers/bluetooth/hci_bcm4377.c:2200:	ret = of_property_read_string(np, "brcm,board-type",
+2025-06-04T05:23:48.6045950Z ./drivers/bluetooth/btbcm.c:553:	if (of_property_read_string_index(root, "compatible", 0, &tmp))
+2025-06-04T05:23:48.6046950Z ./drivers/hwmon/tmp464.c:539:	of_property_read_string(child, "label", &data->channel[channel].label);
+2025-06-04T05:23:48.6047952Z ./drivers/hwmon/lm90.c:2687:	err = of_property_read_string(child, "label", &data->channel_label[id]);
+2025-06-04T05:23:48.6048879Z ./drivers/hwmon/ina3221.c:787:	of_property_read_string(child, "label", &input->label);
+2025-06-04T05:23:48.6049780Z ./drivers/hwmon/tmp421.c:384:	of_property_read_string(child, "label", &data->channel[i].label);
+2025-06-04T05:23:48.6050713Z ./drivers/hwmon/nct7802.c:1098:	if (of_property_read_string(node, "sensor-type", &type_str)) {
+2025-06-04T05:23:48.6051586Z ./drivers/hwmon/nct7802.c:1120:		if (of_property_read_string(node, "temperature-mode",
+2025-06-04T05:23:48.6052451Z ./drivers/hwmon/ibmpowernv.c:307:	if (of_property_read_string(np, "sensor-type", &str))
+2025-06-04T05:23:48.6053438Z ./drivers/hwmon/ibmpowernv.c:457:		if (!of_property_read_string(np, "label", &label))
+2025-06-04T05:23:48.6054286Z ./drivers/hwmon/ibmpowernv.c:614:		if (!of_property_read_string(np, "label", &label)) {
+2025-06-04T05:23:48.6055282Z ./drivers/virt/gunyah/gh_rm_core.c:905:	ret = of_property_read_string_array(rm_root, "qcom,peers", peers_array,
+2025-06-04T05:23:48.6056517Z ./drivers/virt/gunyah/gh_rm_core.c:1009:		ret = of_property_read_string(node, "qcom,image-name",
+2025-06-04T05:23:48.6057583Z ./drivers/virt/gunyah/gh_secure_vm_loader.c:653:	ret = of_property_read_string(pdev->dev.of_node, "qcom,firmware-name",
+2025-06-04T05:23:48.6058591Z ./drivers/hte/hte.c:525:		ret = of_property_read_string_index(np, "timestamp-names",
+2025-06-04T05:23:48.6059553Z ./drivers/i2c/busses/i2c-brcmstb.c:627:	rc = of_property_read_string(dev->device->of_node, "interrupt-names",
+2025-06-04T05:23:48.6060640Z ./drivers/i2c/muxes/i2c-mux-pinctrl.c:114:		ret = of_property_read_string_index(np, "pinctrl-names", i,
+2025-06-04T05:23:48.6061731Z ./drivers/i2c/muxes/i2c-demux-pinctrl.c:229:	err = of_property_read_string(np, "i2c-bus-name", &priv->bus_name);
+2025-06-04T05:23:48.6062809Z ./drivers/pmdomain/apple/pmgr-pwrstate.c:215:	ret = of_property_read_string(node, "label", &name);
+2025-06-04T05:23:48.6064023Z ./drivers/pmdomain/samsung/exynos-pm-domains.c:99:	if (of_property_read_string(node, "label", &name) < 0)
+2025-06-04T05:23:48.6065007Z ./drivers/media/rc/st_rc.c:247:	if (np && !of_property_read_string(np, "rx-mode", &rx_mode)) {
+2025-06-04T05:23:48.6065929Z ./drivers/media/i2c/tda1997x.c:2354:	if (!of_property_read_string(np, "nxp,audout-format", &str)) {
+2025-06-04T05:23:48.6067117Z ./drivers/media/platform/mediatek/vcodec/encoder/mtk_vcodec_enc_pm.c:43:		ret = of_property_read_string_index(pdev->dev.of_node,
+2025-06-04T05:23:48.6068500Z ./drivers/media/platform/mediatek/vcodec/decoder/mtk_vcodec_dec_pm.c:39:		ret = of_property_read_string_index(pdev->dev.of_node,
+2025-06-04T05:23:48.6070028Z ./drivers/media/platform/qcom/venus/firmware.c:223:	ret = of_property_read_string_index(dev->of_node, "firmware-name", 0,
+2025-06-04T05:23:48.6071301Z ./drivers/media/platform/marvell/mcam-core.c:1887:	of_property_read_string(cam->dev->of_node, "clock-output-names",
+2025-06-04T05:23:48.6072618Z ./drivers/media/platform/microchip/microchip-isc-clk.c:252:		of_property_read_string(np, "clock-output-names", &clk_name);
+2025-06-04T05:23:48.6074050Z ./drivers/media/platform/xilinx/xilinx-vipp.c:424:	ret = of_property_read_string(node, "direction", &direction);
+2025-06-04T05:23:48.6075245Z ./drivers/media/platform/xilinx/xilinx-vip.c:121:		of_property_read_string(node, "xlnx,cfa-pattern", &pattern);
+2025-06-04T05:23:48.6507748Z ./drivers/media/platform/samsung/exynos4-is/media-dev.c:1330:		ret = of_property_read_string_index(dev->of_node,
+2025-06-04T05:23:48.6508933Z ./drivers/hsi/clients/nokia-modem.c:105:		err = of_property_read_string_index(np, "gpio-names", i,
+2025-06-04T05:23:48.6509872Z ./drivers/hsi/hsi_core.c:143:	err = of_property_read_string(client, name, &mode);
+2025-06-04T05:23:48.6510653Z ./drivers/hsi/hsi_core.c:163:	err = of_property_read_string(client, name, &flow);
+2025-06-04T05:23:48.6511459Z ./drivers/hsi/hsi_core.c:183:	err = of_property_read_string(client, name, &arb_mode);
+2025-06-04T05:23:48.6512305Z ./drivers/hsi/hsi_core.c:275:		err = of_property_read_string_index(client, "hsi-channel-names",
+2025-06-04T05:23:48.6513489Z ./drivers/watchdog/at91sam9_wdt.c:293:	if (!of_property_read_string(np, "atmel,watchdog-type", &tmp) &&
+2025-06-04T05:23:48.6514519Z ./drivers/watchdog/at91sam9_wdt.c:301:	if (!of_property_read_string(np, "atmel,reset-type", &tmp) &&
+2025-06-04T05:23:48.6515432Z ./drivers/watchdog/gpio_wdt.c:122:	ret = of_property_read_string(np, "hw_algo", &algo);
+2025-06-04T05:23:48.6516288Z ./drivers/watchdog/asm9260_wdt.c:269:	ret = of_property_read_string(priv->dev->of_node,
+2025-06-04T05:23:48.6517240Z ./drivers/watchdog/sama5d4_wdt.c:192:	if (!of_property_read_string(np, "atmel,watchdog-type", &tmp) &&
+2025-06-04T05:23:48.6518283Z ./drivers/watchdog/aspeed_wdt.c:371:	ret = of_property_read_string(np, "aspeed,reset-type", &reset_type);
+2025-06-04T05:23:48.6519310Z ./drivers/nvmem/rave-sp-eeprom.c:328:	of_property_read_string(np, "zii,eeprom-name", &config.name);
+2025-06-04T05:23:48.6520339Z ./drivers/misc/xilinx_sdfec.c:1040:	rval = of_property_read_string(node, "xlnx,sdfec-code", &fec_code);
+2025-06-04T05:23:48.6521664Z ./drivers/misc/fastrpc.c:2262:	err = of_property_read_string(rdev->of_node, "label", &domain);
+2025-06-04T05:23:48.6522519Z ./drivers/misc/sram.c:230:			ret = of_property_read_string(child, "label", &label);
+2025-06-04T05:23:48.6523510Z ./drivers/video/fbdev/pxafb.c:2106:	ret = of_property_read_string(disp, "lcd-type", &s);
+2025-06-04T05:23:48.6524543Z ./drivers/video/fbdev/omap2/omapfb/dss/display.c:147:		of_property_read_string(dssdev->dev->of_node, "label",
+2025-06-04T05:23:48.6525689Z ./drivers/video/fbdev/atmel_lcdfb.c:899:	err = of_property_read_string(np, "atmel,lcd-wiring-mode", &mode);
+2025-06-04T05:23:48.6526686Z ./drivers/video/fbdev/simplefb.c:152:	ret = of_property_read_string(np, "format", &format);
+2025-06-04T05:23:48.6527607Z ./drivers/video/fbdev/imxfb.c:750:	ret = of_property_read_string(np, "model", &of_mode->name);
+2025-06-04T05:23:48.6528611Z ./drivers/video/backlight/sky81452-backlight.c:202:	of_property_read_string(np, "name", &pdata->name);
+2025-06-04T05:23:48.6529672Z ./drivers/video/backlight/lp855x_bl.c:336:	of_property_read_string(node, "bl-name", &pdata->name);
+2025-06-04T05:23:48.6530729Z ./drivers/video/backlight/qcom-wled.c:1408:	rc = of_property_read_string(dev->of_node, "label", &wled->name);
+2025-06-04T05:23:48.6531823Z ./drivers/video/backlight/arcxcnn_bl.c:183:	ret = of_property_read_string(node, "label", &lp->pdata->name);
+2025-06-04T05:23:48.6532839Z ./drivers/pinctrl/devicetree.c:238:		ret = of_property_read_string_index(np, "pinctrl-names",
+2025-06-04T05:23:48.6534158Z ./drivers/pinctrl/berlin/berlin.c:64:	ret = of_property_read_string(node, "function", &function_name);
+2025-06-04T05:23:48.6535194Z ./drivers/pinctrl/sprd/pinctrl-sprd.c:275:	ret = of_property_read_string(np, "function", &function);
+2025-06-04T05:23:48.6536271Z ./drivers/pinctrl/tegra/pinctrl-tegra.c:118:	ret = of_property_read_string(np, "nvidia,function", &function);
+2025-06-04T05:23:48.6537435Z ./drivers/pinctrl/tegra/pinctrl-tegra-xusb.c:166:	err = of_property_read_string(np, "nvidia,function", &function);
+2025-06-04T05:23:48.6538579Z ./drivers/pinctrl/pinctrl-equilibrium.c:603:		if (of_property_read_string(np, "function", &fn_name)) {
+2025-06-04T05:23:48.6539632Z ./drivers/pinctrl/pinctrl-lantiq.c:92:	ret = of_property_read_string(np, "lantiq,function", &function);
+2025-06-04T05:23:48.6540719Z ./drivers/pinctrl/pinctrl-tb10x.c:547:	if (of_property_read_string(np_config, "abilis,function", &string)) {
+2025-06-04T05:23:48.6541750Z ./drivers/pinctrl/pinctrl-tb10x.c:785:		if (!of_property_read_string(child, "abilis,function",
+2025-06-04T05:23:48.6542738Z ./drivers/pinctrl/pinconf-generic.c:324:	ret = of_property_read_string(np, "function", &function);
+2025-06-04T05:23:48.6543966Z ./drivers/pinctrl/nomadik/pinctrl-nomadik.c:1407:	ret = of_property_read_string(np, "function", &function);
+2025-06-04T05:23:48.6545092Z ./drivers/pinctrl/nomadik/pinctrl-abx500.c:753:	ret = of_property_read_string(np, "function", &function);
+2025-06-04T05:23:48.6546155Z ./drivers/pinctrl/renesas/pinctrl.c:122:	ret = of_property_read_string(np, "function", &function);
+2025-06-04T05:23:48.6547235Z ./drivers/pinctrl/mvebu/pinctrl-mvebu.c:419:	ret = of_property_read_string(np, "marvell,function", &function);
+2025-06-04T05:23:48.6548388Z ./drivers/pinctrl/samsung/pinctrl-samsung.c:722:		ret = of_property_read_string_index(func_np, "samsung,pins",
+2025-06-04T05:23:48.6549455Z ./drivers/pinctrl/pinctrl-st.c:1532:	of_property_read_string(np, "st,bank-name", &range->name);
+2025-06-04T05:23:48.6912511Z ./drivers/pinctrl/sunxi/pinctrl-sunxi.c:297:	ret = of_property_read_string(node, "function", &function);
+2025-06-04T05:23:48.6913916Z ./drivers/pinctrl/sunxi/pinctrl-sunxi.c:302:	ret = of_property_read_string(node, "allwinner,function", &function);
+2025-06-04T05:23:48.6915081Z ./drivers/pinctrl/sunplus/sppctl.c:922:	if (nmG > 0 && of_property_read_string(np_config, "function", &s_f) == 0) {
+2025-06-04T05:23:48.6916191Z ./drivers/pinctrl/spear/pinctrl-spear.c:161:		ret = of_property_read_string(np, "st,function", &function);
+2025-06-04T05:23:48.6917488Z ./drivers/pinctrl/spear/pinctrl-spear.c:186:		of_property_read_string(np, "st,function", &function);
+2025-06-04T05:23:48.6918410Z ./drivers/pwm/core.c:736:		err = of_property_read_string_index(np, "pwm-names", index,
+2025-06-04T05:23:48.6919371Z ./drivers/devfreq/event/exynos-ppmu.c:564:		of_property_read_string(node, "event-name", &desc[j].name);
+2025-06-04T05:23:48.6920456Z ./drivers/mmc/host/sdhci-of-arasan.c:1551:	ret = of_property_read_string_index(np, "clock-output-names", 0,
+2025-06-04T05:23:48.6921583Z ./drivers/mmc/host/sdhci-of-arasan.c:1603:	ret = of_property_read_string_index(np, "clock-output-names", 1,
+2025-06-04T05:23:48.6922648Z ./drivers/mmc/host/sdhci-xenon-phy.c:706:	ret = of_property_read_string(np, "marvell,pad-type", &name);
+2025-06-04T05:23:48.6923800Z ./drivers/mmc/host/sdhci-msm.c:3739:	ret = of_property_read_string(of_node, "qcom,msm-bus,name",
+2025-06-04T05:23:48.6924739Z ./drivers/base/soc.c:122:	of_property_read_string(np, "model", &soc_dev_attr->machine);
+2025-06-04T05:23:48.6925635Z ./drivers/uio/uio_pdrv_genirq.c:130:		if (!of_property_read_string(node, "linux,uio-name", &name))
+2025-06-04T05:23:48.6926580Z ./drivers/uio/uio_fsl_elbc_gpcm.c:288:	if (of_property_read_string(node, "device_type", &type) == 0)
+2025-06-04T05:23:48.6927524Z ./drivers/uio/uio_fsl_elbc_gpcm.c:300:	if (of_property_read_string(node, "uio_name", &dt_name) != 0)
+2025-06-04T05:23:48.6928600Z ./drivers/pci/controller/cadence/pcie-cadence.c:214:		of_property_read_string_index(np, "phy-names", i, &name);
+2025-06-04T05:23:48.6929814Z ./drivers/pci/controller/pci-msm.c:5117:		if (of_property_read_string(pdev->dev.of_node,
+2025-06-04T05:23:48.6930748Z ./drivers/pci/controller/pci-msm.c:8342:	ret = of_property_read_string(of_node, "qcom,drv-name",
+2025-06-04T05:23:48.6931717Z ./drivers/pci/hotplug/pnv_php.c:629:	ret = of_property_read_string(dn, "ibm,slot-label", &label);
+2025-06-04T05:23:48.6932723Z ./drivers/crypto/nx/nx-common-powernv.c:806:	ret = of_property_read_string(dn, "priority", &priority);
+2025-06-04T05:23:48.6933860Z ./drivers/mtd/nand/ecc.c:373:	err = of_property_read_string(np, "nand-ecc-placement", &pm);
+2025-06-04T05:23:48.6934715Z ./drivers/mtd/nand/ecc.c:397:	err = of_property_read_string(np, "nand-ecc-algo", &pm);
+2025-06-04T05:23:48.6935590Z ./drivers/mtd/nand/raw/davinci_nand.c:458:		if (!of_property_read_string(pdev->dev.of_node,
+2025-06-04T05:23:48.6936548Z ./drivers/mtd/nand/raw/nand_base.c:5428:	err = of_property_read_string(np, "nand-ecc-mode", &pm);
+2025-06-04T05:23:48.6937503Z ./drivers/mtd/nand/raw/nand_base.c:5461:	err = of_property_read_string(np, "nand-ecc-mode", &pm);
+2025-06-04T05:23:48.6938451Z ./drivers/mtd/nand/raw/nand_base.c:5475:	err = of_property_read_string(np, "nand-ecc-mode", &pm);
+2025-06-04T05:23:48.6939412Z ./drivers/mtd/nand/raw/omap2.c:1681:	if (of_property_read_string(child, "ti,nand-ecc-opt", &s)) {
+2025-06-04T05:23:48.6940393Z ./drivers/mtd/nand/raw/omap2.c:1709:	if (!of_property_read_string(child, "ti,nand-xfer-type", &s)) {
+2025-06-04T05:23:48.6941312Z ./drivers/mtd/mtdcore.c:613:		if (!of_property_read_string(mtd_dn, "label", &pname)) {
+2025-06-04T05:23:48.6942164Z ./drivers/mtd/parsers/scpart.c:200:		if (!of_property_read_string(pp, "label", &partname))
+2025-06-04T05:23:48.6943287Z ./drivers/mtd/maps/physmap-core.c:288:	count = of_property_read_string_array(dp, "linux,part-probe", res,
+2025-06-04T05:23:48.6944329Z ./drivers/mtd/maps/physmap-core.c:313:	of_property_read_string(dp, "probe-type", &probe_type);
+2025-06-04T05:23:48.6945304Z ./drivers/mtd/maps/physmap-core.c:352:	of_property_read_string(dp, "linux,mtd-name", &mtd_name);
+2025-06-04T05:23:48.6946424Z ./drivers/power/supply/qcom/battery-profile-loader.c:75:			rc = of_property_read_string(node, "qcom,battery-type",
+2025-06-04T05:23:48.6947673Z ./drivers/power/supply/qcom/battery-profile-loader.c:120:	rc = of_property_read_string(best_node, "qcom,battery-type",
+2025-06-04T05:23:48.6948958Z ./drivers/power/supply/qcom/battery-profile-loader.c:195:	rc = of_property_read_string(best_node, "qcom,battery-type",
+2025-06-04T05:23:48.6950431Z ./drivers/power/supply/qcom/step-chg-jeita.c:376:	rc = of_property_read_string(profile_node, "qcom,battery-type",
+2025-06-04T05:23:48.6951692Z ./drivers/power/supply/qcom/qbg-battery-profile.c:328:	rc = of_property_read_string(node, "qcom,battery-type", &battery_name);
+2025-06-04T05:23:48.6952919Z ./drivers/power/supply/qcom/qti-qbg.c:1380:	rc = of_property_read_string(profile_node, "qcom,battery-type",
+2025-06-04T05:23:48.6954249Z ./drivers/power/supply/qcom/smblite-remote-bms.c:732:	rc = of_property_read_string(profile_node, "qcom,battery-type",
+2025-06-04T05:23:48.7123831Z ./drivers/power/supply/lp8727_charger.c:525:		of_property_read_string(child, "charger-type", &type);
+2025-06-04T05:23:48.7124933Z ./drivers/power/supply/qti_battery_charger.c:2240:	of_property_read_string(node, "qcom,wireless-fw-name",
+2025-06-04T05:23:48.7126053Z ./drivers/power/supply/charger-manager.c:1293:	of_property_read_string(np, "cm-name", &desc->psy_name);
+2025-06-04T05:23:48.7127140Z ./drivers/power/supply/charger-manager.c:1325:			of_property_read_string_index(np, "cm-chargers",
+2025-06-04T05:23:48.7128259Z ./drivers/power/supply/charger-manager.c:1329:	of_property_read_string(np, "cm-fuel-gauge", &desc->psy_fuel_gauge);
+2025-06-04T05:23:48.7129502Z ./drivers/power/supply/charger-manager.c:1331:	of_property_read_string(np, "cm-thermal-zone", &desc->thermal_zone);
+2025-06-04T05:23:48.7130665Z ./drivers/power/supply/charger-manager.c:1370:			of_property_read_string(child, "cm-regulator-name",
+2025-06-04T05:23:48.7131877Z ./drivers/power/supply/charger-manager.c:1388:					of_property_read_string(_child,
+2025-06-04T05:23:48.7132758Z ./drivers/power/supply/charger-manager.c:1390:					of_property_read_string(_child,
+2025-06-04T05:23:48.7133942Z ./drivers/power/reset/at91-poweroff.c:110:	err = of_property_read_string(np, "atmel,wakeup-mode", &pm);
+2025-06-04T05:23:48.7134892Z ./drivers/thermal/thermal_of.c:81:	err = of_property_read_string(np, "type", &t);
+2025-06-04T05:23:48.7135875Z ./drivers/thermal/qcom/bcl_pmic5.c:764:	ret = of_property_read_string(pdev->dev.of_node, "nvmem-cell-names", &name);
+2025-06-04T05:23:48.7137067Z ./drivers/thermal/qcom/bcl_pmic5.c:949:	ret = of_property_read_string(pdev->dev.of_node, "nvmem-cell-names", &name);
+2025-06-04T05:23:48.7138160Z ./drivers/thermal/qcom/sdpm_clk.c:172:		ret = of_property_read_string_index(dev_node, "clock-names",
+2025-06-04T05:23:48.7139099Z ./drivers/thermal/qcom/qmi_sensors_v2.c:548:			of_property_read_string_index(subsys_np,
+2025-06-04T05:23:48.7139978Z ./drivers/thermal/qcom/thermal_pause.c:396:		ret = of_property_read_string(subsys_np,
+2025-06-04T05:23:48.7140844Z ./drivers/thermal/qcom/cpu_hotplug.c:229:		ret = of_property_read_string(subsys_np,
+2025-06-04T05:23:48.7141733Z ./drivers/thermal/qcom/qmi_sensors.c:597:			of_property_read_string_index(subsys_np,
+2025-06-04T05:23:48.7142554Z ./drivers/thermal/qcom/qmi_cooling.c:502:			if (!of_property_read_string(cdev_np,
+2025-06-04T05:23:48.7143711Z ./drivers/thermal/qcom/gpu_dump_skip_cdev.c:95:	ret = of_property_read_string(pdev->dev.of_node, "nvmem-cell-names", &name);
+2025-06-04T05:23:48.7144799Z ./drivers/regulator/rpmh-regulator.c:1537:	rc = of_property_read_string(node, prop, &type);
+2025-06-04T05:23:48.7145751Z ./drivers/regulator/rpmh-regulator.c:1711:		rc = of_property_read_string(node, "regulator-name",
+2025-06-04T05:23:48.7146748Z ./drivers/regulator/rpmh-regulator.c:2101:	rc = of_property_read_string(node, "qcom,resource-name",
+2025-06-04T05:23:48.7147782Z ./drivers/regulator/gpio-regulator.c:212:	ret = of_property_read_string(np, "regulator-type", &regtype);
+2025-06-04T05:23:48.7148910Z ./drivers/regulator/qcom-rpmh-regulator.c:1413:	ret = of_property_read_string(dev->of_node, "qcom,pmic-id", &pmic_id);
+2025-06-04T05:23:48.7150034Z ./drivers/regulator/rpm-smd-regulator.c:1939:	rc = of_property_read_string(node, "qcom,resource-name",
+2025-06-04T05:23:48.7151033Z ./drivers/regulator/rpm-smd-regulator.c:1975:		rc = of_property_read_string(node, prop, &type);
+2025-06-04T05:23:48.7152181Z ./drivers/regulator/rpm-smd-regulator.c:1998:		rc = of_property_read_string(node, prop, &type);
+2025-06-04T05:23:48.7153413Z ./drivers/regulator/proxy-consumer.c:103:	of_property_read_string(node, "qcom,proxy-consumer-name", &supply_name);
+2025-06-04T05:23:48.7154486Z ./drivers/regulator/axp20x-regulator.c:1603:			of_property_read_string(rdev->dev.of_node,
+2025-06-04T05:23:48.7155391Z ./drivers/regulator/axp20x-regulator.c:1610:			of_property_read_string(rdev->dev.of_node,
+2025-06-04T05:23:48.7156306Z ./drivers/regulator/axp20x-regulator.c:1615:			of_property_read_string(rdev->dev.of_node,
+2025-06-04T05:23:48.7157303Z ./drivers/regulator/anatop-regulator.c:183:	of_property_read_string(np, "regulator-name", &rdesc->name);
+2025-06-04T05:23:48.7158405Z ./drivers/regulator/qcom_pm8008-regulator.c:888:		rc = of_property_read_string(child, "regulator-name", &name);
+2025-06-04T05:23:48.7159487Z ./drivers/hwtracing/coresight/coresight-tpdm.c:4182:			ret = of_property_read_string_index(node,
+2025-06-04T05:23:48.7160541Z ./drivers/hwtracing/coresight/coresight-tpdm.c:4203:			ret = of_property_read_string_index(node,
+2025-06-04T05:23:48.7161615Z ./drivers/hwtracing/coresight/coresight-dummy.c:67:	ret = of_property_read_string(drvdata->dev->of_node,
+2025-06-04T05:23:48.7162775Z ./drivers/hwtracing/coresight/coresight-remote-etm.c:76:	ret = of_property_read_string(drvdata->dev->of_node,
+2025-06-04T05:23:48.7164116Z ./drivers/hwtracing/coresight/coresight-tmc-sec.c:622:	ret = of_property_read_string(dev->of_node, "real-name",
+2025-06-04T05:23:48.7165548Z ./drivers/hwtracing/coresight/coresight-core.c:2054:	if (!of_property_read_string(node, "coresight-name", &coresight_name))
+2025-06-04T05:23:48.7467932Z ./drivers/hwtracing/coresight/coresight-platform.c:282:			ret = of_property_read_string(sn,
+2025-06-04T05:23:48.7469153Z ./drivers/hwtracing/coresight/coresight-csr.c:484:	ret = of_property_read_string(csr_node, "coresight-name", csr_name);
+2025-06-04T05:23:48.7470452Z ./drivers/hwtracing/coresight/coresight-stm.c:684:	while (!of_property_read_string_index(np, "reg-names", index, &name)) {
+2025-06-04T05:23:48.7471795Z ./drivers/hwtracing/coresight/coresight-funnel.c:252:	while (!of_property_read_string_index(np, "reg-names", index, &name)) {
+2025-06-04T05:23:48.7473356Z ./drivers/hwtracing/coresight/coresight-etm4x-core.c:2040:	if (of_property_read_string(dev->of_node, "coresight-name", &desc.name))
+2025-06-04T05:23:48.7474490Z ./drivers/rpmsg/qcom_smd.c:1019:		ret = of_property_read_string(child, key, &name);
+2025-06-04T05:23:48.7475351Z ./drivers/rpmsg/qcom_smd.c:1406:	ret = of_property_read_string(node, "label", &edge->name);
+2025-06-04T05:23:48.7476211Z ./drivers/rpmsg/glink_pkt.c:1088:	ret = of_property_read_string(np, key, &gpdev->edge);
+2025-06-04T05:23:48.7477069Z ./drivers/rpmsg/glink_pkt.c:1093:	ret = of_property_read_string(np, key, &gpdev->ch_name);
+2025-06-04T05:23:48.7477931Z ./drivers/rpmsg/glink_pkt.c:1098:	ret = of_property_read_string(np, key, &gpdev->dev_name);
+2025-06-04T05:23:48.7478828Z ./drivers/rpmsg/qcom_glink_native.c:2105:		ret = of_property_read_string(child, key, &name);
+2025-06-04T05:23:48.7479782Z ./drivers/rpmsg/qcom_glink_native.c:2384:	ret = of_property_read_string(dev->of_node, "label", &name);
+2025-06-04T05:23:48.7480809Z ./drivers/rpmsg/qcom_glink_native.c:2469:	ret = of_property_read_string(dev->of_node, "label", &glink->name);
+2025-06-04T05:23:48.7481847Z ./drivers/rpmsg/mtk_rpmsg.c:186:		ret = of_property_read_string(child, "mediatek,rpmsg-name", &name);
+2025-06-04T05:23:48.7482924Z ./drivers/remoteproc/qcom_wcnss.c:553:	ret = of_property_read_string(pdev->dev.of_node, "firmware-name",
+2025-06-04T05:23:48.7484177Z ./drivers/remoteproc/qcom_q6v5_adsp.c:680:	ret = of_property_read_string(pdev->dev.of_node, "firmware-name",
+2025-06-04T05:23:48.7485288Z ./drivers/remoteproc/qcom_q6v5_mss.c:1987:	ret = of_property_read_string_index(pdev->dev.of_node, "firmware-name",
+2025-06-04T05:23:48.7486449Z ./drivers/remoteproc/qcom_q6v5_mss.c:2008:	ret = of_property_read_string_index(pdev->dev.of_node, "firmware-name",
+2025-06-04T05:23:48.7487817Z ./drivers/remoteproc/remoteproc_core.c:1002:	ret = of_property_read_string_index(dev->of_node, "firmware-name",
+2025-06-04T05:23:48.7488905Z ./drivers/remoteproc/wkup_m3_rproc.c:144:	ret = of_property_read_string(dev->of_node, "ti,pm-firmware",
+2025-06-04T05:23:48.7489943Z ./drivers/remoteproc/qcom_q6v5_pas.c:1378:		of_property_read_string_index(adsp->dev->of_node, "reg-names",
+2025-06-04T05:23:48.7491014Z ./drivers/remoteproc/qcom_q6v5_pas.c:1608:	ret = of_property_read_string(pdev->dev.of_node, "firmware-name",
+2025-06-04T05:23:48.7492130Z ./drivers/remoteproc/qcom_q6v5_pas.c:1615:		ret = of_property_read_string_index(pdev->dev.of_node, "firmware-name", 1,
+2025-06-04T05:23:48.7493372Z ./drivers/remoteproc/pru_rproc.c:276:	ret = of_property_read_string_index(np, "firmware-name", index,
+2025-06-04T05:23:48.7494385Z ./drivers/remoteproc/pru_rproc.c:1005:	ret = of_property_read_string(np, "firmware-name", &fw_name);
+2025-06-04T05:23:48.7495443Z ./drivers/remoteproc/omap_remoteproc.c:1122:	ret = of_property_read_string(pdev->dev.of_node, "firmware-name",
+2025-06-04T05:23:48.7496496Z ./drivers/remoteproc/qcom_rproc_slate.c:1188:	ret = of_property_read_string(pdev->dev.of_node,
+2025-06-04T05:23:48.7497525Z ./drivers/interconnect/qcom/bcm-voter.c:554:	ret = of_property_read_string(np, "qcom,crm-name", &crm_name);
+2025-06-04T05:23:48.7498429Z ./drivers/bus/brcmstb_gisb.c:470:			of_property_read_string_index(dn,
+2025-06-04T05:23:48.7499163Z ./drivers/bus/arm-cci.c:467:		if (of_property_read_string(cp, "interface-type",
+2025-06-04T05:23:48.7500293Z ./drivers/bus/mhi/devices/mhi_satellite.c:929:	ret = of_property_read_string(rpdev->dev.parent->of_node, "label",
+2025-06-04T05:23:48.7501406Z ./drivers/bus/mhi/controllers/mhi_qcom.c:1007:		ret = of_property_read_string(of_node, "qcom,iommu-dma",
+2025-06-04T05:23:48.7502507Z ./drivers/bus/mhi/controllers/mhi_arch_qcom.c:459:		ret = of_property_read_string(of_node, "interconnect-names",
+2025-06-04T05:23:48.7503678Z ./drivers/dma/of-dma.c:231:	if (of_property_read_string_index(np, "dma-names", index, &s))
+2025-06-04T05:23:48.7504563Z ./drivers/dma/imx-sdma.c:2338:	ret = of_property_read_string(np, "fsl,sdma-ram-script-name",
+2025-06-04T05:23:48.7505563Z ./drivers/phy/mediatek/phy-mtk-hdmi.c:108:	ret = of_property_read_string(dev->of_node, "clock-output-names",
+2025-06-04T05:23:48.7506693Z ./drivers/phy/mediatek/phy-mtk-mipi-dsi.c:153:	ret = of_property_read_string(dev->of_node, "clock-output-names",
+2025-06-04T05:23:48.7507891Z ./drivers/phy/rockchip/phy-rockchip-inno-usb2.c:383:	of_property_read_string(node, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7534131Z ./drivers/phy/rockchip/phy-rockchip-inno-hdmi.c:1013:	of_property_read_string(np, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7821552Z ./drivers/phy/allwinner/phy-sun6i-mipi-dphy.c:597:	ret = of_property_read_string(pdev->dev.of_node, "allwinner,direction",
+2025-06-04T05:23:48.7822808Z ./drivers/phy/broadcom/phy-brcm-sata.c:812:		if (!of_property_read_string(child, "brcm,rxaeq-mode",
+2025-06-04T05:23:48.7824036Z ./drivers/phy/broadcom/phy-brcm-usb.c:499:	err = of_property_read_string(dn, "dr_mode", &mode);
+2025-06-04T05:23:48.7825001Z ./drivers/phy/tegra/xusb.c:122:	err = of_property_read_string(np, "nvidia,function", &function);
+2025-06-04T05:23:48.7825876Z ./drivers/phy/tegra/xusb.c:750:	if (!of_property_read_string(np, "mode", &mode)) {
+2025-06-04T05:23:48.7826933Z ./drivers/phy/qualcomm/phy-qcom-qmp-pcie-msm8996.c:667:	ret = of_property_read_string(np, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7828202Z ./drivers/phy/qualcomm/phy-qcom-qmp-usb.c:2016:	ret = of_property_read_string(np, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7829448Z ./drivers/phy/qualcomm/phy-qcom-qmp-usb-legacy.c:1156:	ret = of_property_read_string(np, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7830691Z ./drivers/phy/qualcomm/phy-qcom-qmp-pcie.c:3449:	ret = of_property_read_string(np, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7832221Z ./drivers/phy/qualcomm/phy-qcom-pcie2.c:230:	ret = of_property_read_string(np, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7833470Z ./drivers/phy/ti/phy-am654-serdes.c:801:		ret = of_property_read_string_index(node, "clock-output-names",
+2025-06-04T05:23:48.7834500Z ./drivers/leds/leds-qpnp-flash-v2.c:2136:	rc = of_property_read_string(node, "label", &temp_string);
+2025-06-04T05:23:48.7835562Z ./drivers/leds/leds-qpnp-flash-v2.c:2164:	rc = of_property_read_string(node, "qcom,led-name", &fnode->cdev.name);
+2025-06-04T05:23:48.7836662Z ./drivers/leds/leds-qpnp-flash-v2.c:2187:	rc = of_property_read_string(node, "qcom,default-led-trigger",
+2025-06-04T05:23:48.7837749Z ./drivers/leds/leds-qpnp-flash-v2.c:2304:	rc = of_property_read_string(node, "qcom,led-name", &snode->cdev.name);
+2025-06-04T05:23:48.7838840Z ./drivers/leds/leds-qpnp-flash-v2.c:2316:	rc = of_property_read_string(node, "qcom,default-led-trigger",
+2025-06-04T05:23:48.7839851Z ./drivers/leds/leds-qpnp-flash-v2.c:3076:		rc = of_property_read_string(temp, "label", &temp_string);
+2025-06-04T05:23:48.7840852Z ./drivers/leds/leds-qpnp-flash-v2.c:3112:		rc = of_property_read_string(temp, "label", &temp_string);
+2025-06-04T05:23:48.7841767Z ./drivers/leds/leds-lp55xx-common.c:572:	of_property_read_string(np, "chan-name",
+2025-06-04T05:23:48.7842663Z ./drivers/leds/leds-lp55xx-common.c:703:	of_property_read_string(np, "label", &pdata->label);
+2025-06-04T05:23:48.7843702Z ./drivers/leds/leds-mc13783.c:151:		if (!of_property_read_string(child, "label", &str))
+2025-06-04T05:23:48.7844783Z ./drivers/leds/leds-mc13783.c:153:		if (!of_property_read_string(child, "linux,default-trigger",
+2025-06-04T05:23:48.7845657Z ./drivers/leds/leds-spi-byte.c:100:	of_property_read_string(child, "label", &name);
+2025-06-04T05:23:48.7846536Z ./drivers/leds/leds-netxbig.c:569:		if (!of_property_read_string(child, "label", &string))
+2025-06-04T05:23:48.7847371Z ./drivers/leds/leds-netxbig.c:574:		if (!of_property_read_string(child,
+2025-06-04T05:23:48.7848246Z ./drivers/leds/rgb/leds-qcom-lpg.c:1440:	if (!of_property_read_string(np, "default-state", &state) &&
+2025-06-04T05:23:48.7849144Z ./drivers/leds/leds-pca9532.c:484:		if (of_property_read_string(child, "label",
+2025-06-04T05:23:48.7849985Z ./drivers/leds/leds-pca9532.c:488:		of_property_read_string(child, "linux,default-trigger",
+2025-06-04T05:23:48.7850922Z ./drivers/leds/leds-pca9532.c:490:		if (!of_property_read_string(child, "default-state", &state)) {
+2025-06-04T05:23:48.7851857Z ./drivers/leds/leds-qti-flash.c:1495:	rc = of_property_read_string(node, "qcom,led-name",
+2025-06-04T05:23:48.7852820Z ./drivers/leds/leds-qti-flash.c:1502:	rc = of_property_read_string(node, "qcom,default-led-trigger",
+2025-06-04T05:23:48.7853900Z ./drivers/leds/leds-qti-flash.c:1567:	rc = of_property_read_string(node, "qcom,led-name",
+2025-06-04T05:23:48.7854802Z ./drivers/leds/leds-qti-flash.c:1574:	rc = of_property_read_string(node, "label", &temp_string);
+2025-06-04T05:23:48.7855769Z ./drivers/leds/leds-qti-flash.c:1596:	rc = of_property_read_string(node, "qcom,default-led-trigger",
+2025-06-04T05:23:48.7856734Z ./drivers/leds/leds-qti-flash.c:1773:		rc = of_property_read_string(temp, "label", &label);
+2025-06-04T05:23:48.7857619Z ./drivers/leds/leds-qti-flash.c:1811:		rc = of_property_read_string(temp, "label", &label);
+2025-06-04T05:23:48.7858585Z ./drivers/mfd/qcom-i2c-pmic.c:473:	of_property_read_string(node, "pinctrl-names", &chip->pinctrl_name);
+2025-06-04T05:23:48.7859523Z ./drivers/mfd/omap-usb-host.c:496:		ret = of_property_read_string(node, prop, &mode);
+2025-06-04T05:23:48.7860436Z ./drivers/rtc/rtc-rv3032.c:773:	of_property_read_string(node, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7861382Z ./drivers/rtc/rtc-m41t80.c:581:	of_property_read_string(node, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7862340Z ./drivers/rtc/rtc-rv3028.c:828:	of_property_read_string(node, "clock-output-names", &init.name);
+2025-06-04T05:23:48.7863465Z ./drivers/rtc/rtc-nct3018y.c:434:	of_property_read_string(node, "clock-output-names", &init.name);
+2025-06-04T05:23:48.9109049Z ./drivers/rtc/rtc-ac100.c:346:		of_property_read_string_index(np, "clock-output-names",
+2025-06-04T05:23:48.9109699Z ./drivers/rtc/rtc-abx80x.c:576:	ret = of_property_read_string(np, "abracon,tc-diode", &diode);
+2025-06-04T05:23:48.9110289Z ./drivers/rtc/rtc-pcf85063.c:505:	of_property_read_string(node, "clock-output-names", &init.name);
+2025-06-04T05:23:48.9110969Z ./drivers/rtc/rtc-pcf8563.c:491:	of_property_read_string(node, "clock-output-names", &init.name);
+2025-06-04T05:23:48.9111717Z ./drivers/rtc/rtc-sun6i.c:273:	of_property_read_string_index(node, "clock-output-names", 2,
+2025-06-04T05:23:48.9112368Z ./drivers/rtc/rtc-sun6i.c:295:	of_property_read_string_index(node, "clock-output-names", 0,
+2025-06-04T05:23:48.9113004Z ./drivers/rtc/rtc-sun6i.c:304:	of_property_read_string_index(node, "clock-output-names", 1,
+2025-06-04T05:23:48.9113967Z ./drivers/rtc/rtc-hym8563.c:391:	of_property_read_string(node, "clock-output-names", &init.name);
+2025-06-04T05:23:48.9114635Z ./drivers/firmware/imx/imx-scu-soc.c:116:	ret = of_property_read_string(of_root,
+2025-06-04T05:23:48.9115343Z ./drivers/firmware/arm_scmi/driver.c:2595:	of_property_read_string(info->dev->of_node, "compatible", &c_ptr);
+2025-06-04T05:23:48.9116045Z ./drivers/firmware/arm_sdei.c:930:		if (of_property_read_string(np, "method", &method)) {
+2025-06-04T05:23:48.9116733Z ./drivers/firmware/stratix10-svc.c:858:	if (of_property_read_string(dev->of_node, "method", &method)) {
+2025-06-04T05:23:48.9117446Z ./drivers/firmware/xilinx/zynqmp.c:481:	if (of_property_read_string(np, "method", &method)) {
+2025-06-04T05:23:48.9118480Z ./drivers/firmware/psci/psci.c:304:	if (of_property_read_string(np, "method", &method)) {
+2025-06-04T05:23:48.9119163Z ./drivers/clocksource/timer-integrator-ap.c:181:	err = of_property_read_string(of_aliases,
+2025-06-04T05:23:48.9119877Z ./drivers/clocksource/timer-integrator-ap.c:201:	err = of_property_read_string(of_aliases,
+2025-06-04T05:23:48.9120552Z ./drivers/mailbox/mailbox-sti.c:431:	ret = of_property_read_string(np, "mbox-name", &mdev->name);
+2025-06-04T05:23:48.9121151Z ./drivers/cpuidle/dt_idle_states.c:75:	err = of_property_read_string(state_node, "idle-state-name", &desc);
+2025-06-04T05:23:48.9121835Z ./drivers/net/wireless/broadcom/brcm80211/brcmfmac/of.c:50:		if (of_property_read_string_index(np, "brcm,ccode-map",
+2025-06-04T05:23:48.9122577Z ./drivers/net/wireless/broadcom/brcm80211/brcmfmac/of.c:82:	err = of_property_read_string(np, "brcm,board-type", &prop);
+2025-06-04T05:23:48.9123443Z ./drivers/net/wireless/broadcom/brcm80211/brcmfmac/of.c:86:	if (!of_property_read_string(np, "apple,antenna-sku", &prop))
+2025-06-04T05:23:48.9124197Z ./drivers/net/wireless/broadcom/brcm80211/brcmfmac/of.c:102:		of_property_read_string_index(root, "compatible", 0, &tmp);
+2025-06-04T05:23:48.9125023Z ./drivers/net/wireless/silabs/wfx/main.c:308:	of_property_read_string(dev->of_node, "silabs,antenna-config-file", &wdev->pdata.file_pds);
+2025-06-04T05:23:48.9125809Z ./drivers/net/wireless/ath/ath11k/core.c:975:	of_property_read_string(node, "qcom,ath11k-calibration-variant",
+2025-06-04T05:23:48.9126512Z ./drivers/net/wireless/ath/ath10k/core.c:1137:	of_property_read_string(node, "qcom,ath10k-calibration-variant",
+2025-06-04T05:23:48.9127226Z ./drivers/net/wireless/ath/ath10k/mac.c:5073:	ret = of_property_read_string_index(node, "ext-fem-name", 0, &fem_name);
+2025-06-04T05:23:48.9127999Z ./drivers/net/wireless/ath/wcn36xx/main.c:1602:	ret = of_property_read_string(wcn->dev->parent->of_node, "firmware-name", &wcn->nv_file);
+2025-06-04T05:23:48.9128723Z ./drivers/net/ipa/ipa_main.c:623:	ret = of_property_read_string(dev->of_node, "firmware-name", &path);
+2025-06-04T05:23:48.9129307Z ./drivers/net/ipa/ipa_main.c:742:	ret = of_property_read_string(dev->of_node, "qcom,gsi-loader", &str);
+2025-06-04T05:23:48.9129885Z ./drivers/net/ethernet/ti/netcp_ethss.c:3599:	ret = of_property_read_string(node, "tx-channel",
+2025-06-04T05:23:48.9130463Z ./drivers/net/ethernet/ti/netcp_core.c:253:		if (of_property_read_string(child, "label", &name) < 0) {
+2025-06-04T05:23:48.9131216Z ./drivers/net/ethernet/ti/netcp_core.c:2042:	ret = of_property_read_string(node_interface, "rx-channel",
+2025-06-04T05:23:48.9131876Z ./drivers/net/ethernet/stmicro/stmmac/stmmac_platform.c:378:	err = of_property_read_string(np, "mac-mode", &pm);
+2025-06-04T05:23:48.9132585Z ./drivers/net/ethernet/stmicro/stmmac/dwmac-sti.c:237:		err = of_property_read_string(np, "st,tx-retime-src", &rs);
+2025-06-04T05:23:48.9133422Z ./drivers/net/ethernet/stmicro/stmmac/dwmac-rk.c:1643:	ret = of_property_read_string(dev->of_node, "clock_in_out", &strings);
+2025-06-04T05:23:48.9134121Z ./drivers/net/ethernet/freescale/gianfar.c:706:	err = of_property_read_string(np, "model", &model);
+2025-06-04T05:23:48.9134671Z ./drivers/net/mdio/of_mdio.c:369:	err = of_property_read_string(np, "managed", &managed);
+2025-06-04T05:23:48.9135172Z ./drivers/net/mdio/of_mdio.c:389:	if (of_property_read_string(np, "managed", &managed) == 0 &&
+2025-06-04T05:23:48.9135740Z ./drivers/net/dsa/hirschmann/hellcreek_ptp.c:320:	ret = of_property_read_string(led, "label", &label);
+2025-06-04T05:23:48.9218776Z ./drivers/net/dsa/hirschmann/hellcreek_ptp.c:347:	ret = of_property_read_string(led, "label", &label);
+2025-06-04T05:23:48.9219703Z ./drivers/dma-buf/heaps/qcom_dt_parser.c:29:	ret = of_property_read_string(node, "qcom,dma-heap-name", &heap->name);
+2025-06-04T05:23:48.9220535Z ./drivers/w1/masters/omap_hdq.c:588:	ret = of_property_read_string(pdev->dev.of_node, "ti,mode", &mode);
+2025-06-04T05:23:48.9221453Z ./drivers/of/irq.c:409:		of_property_read_string_index(dev, "interrupt-names", index,
+2025-06-04T05:23:48.9222116Z ./drivers/of/overlay.c:703:	ret = of_property_read_string(info_node, "target-path", &path);
+2025-06-04T05:23:48.9222803Z ./drivers/of/property.c:422: * of_property_read_string - Find and read a string from a property
+2025-06-04T05:23:48.9223884Z ./drivers/of/property.c:440:int of_property_read_string(const struct device_node *np, const char *propname,
+2025-06-04T05:23:48.9224586Z ./drivers/of/property.c:453:EXPORT_SYMBOL_GPL(of_property_read_string);
+2025-06-04T05:23:48.9225275Z ./drivers/of/property.c:493: * of_property_read_string_helper() - Utility helper for parsing string properties
+2025-06-04T05:23:48.9226190Z ./drivers/of/property.c:501: * of_property_read_string*() family of functions.
+2025-06-04T05:23:48.9227163Z ./drivers/of/property.c:503:int of_property_read_string_helper(const struct device_node *np,
+2025-06-04T05:23:48.9228233Z ./drivers/of/property.c:528:EXPORT_SYMBOL_GPL(of_property_read_string_helper);
+2025-06-04T05:23:48.9229289Z ./drivers/of/property.c:934:		of_property_read_string_array(node, propname, val, nval) :
+2025-06-04T05:23:48.9230346Z ./drivers/of/base.c:1750:		if (of_property_read_string(of_chosen, "stdout-path", &name))
+2025-06-04T05:23:48.9231213Z ./drivers/of/base.c:1751:			of_property_read_string(of_chosen, "linux,stdout-path",
+2025-06-04T05:23:48.9232023Z ./drivers/of/base.c:1754:			of_property_read_string(of_aliases, "stdout", &name);
+2025-06-04T05:23:48.9232857Z ./drivers/of/address.c:1129:		of_property_read_string_index(dev, "reg-names",	index, &name);
+2025-06-04T05:23:48.9233842Z ./drivers/of/unittest.c:746:	/* of_property_read_string_index() tests */
+2025-06-04T05:23:48.9234720Z ./drivers/of/unittest.c:747:	rc = of_property_read_string_index(np, "string-property", 0, strings);
+2025-06-04T05:23:48.9235862Z ./drivers/of/unittest.c:748:	unittest(rc == 0 && !strcmp(strings[0], "foobar"), "of_property_read_string_index() failure; rc=%i\n", rc);
+2025-06-04T05:23:48.9237056Z ./drivers/of/unittest.c:750:	rc = of_property_read_string_index(np, "string-property", 1, strings);
+2025-06-04T05:23:48.9238246Z ./drivers/of/unittest.c:751:	unittest(rc == -ENODATA && strings[0] == NULL, "of_property_read_string_index() failure; rc=%i\n", rc);
+2025-06-04T05:23:48.9239127Z ./drivers/of/unittest.c:752:	rc = of_property_read_string_index(np, "phandle-list-names", 0, strings);
+2025-06-04T05:23:48.9239775Z ./drivers/of/unittest.c:753:	unittest(rc == 0 && !strcmp(strings[0], "first"), "of_property_read_string_index() failure; rc=%i\n", rc);
+2025-06-04T05:23:48.9240612Z ./drivers/of/unittest.c:754:	rc = of_property_read_string_index(np, "phandle-list-names", 1, strings);
+2025-06-04T05:23:48.9241256Z ./drivers/of/unittest.c:755:	unittest(rc == 0 && !strcmp(strings[0], "second"), "of_property_read_string_index() failure; rc=%i\n", rc);
+2025-06-04T05:23:48.9241897Z ./drivers/of/unittest.c:756:	rc = of_property_read_string_index(np, "phandle-list-names", 2, strings);
+2025-06-04T05:23:48.9242530Z ./drivers/of/unittest.c:757:	unittest(rc == 0 && !strcmp(strings[0], "third"), "of_property_read_string_index() failure; rc=%i\n", rc);
+2025-06-04T05:23:48.9243388Z ./drivers/of/unittest.c:759:	rc = of_property_read_string_index(np, "phandle-list-names", 3, strings);
+2025-06-04T05:23:48.9244048Z ./drivers/of/unittest.c:760:	unittest(rc == -ENODATA && strings[0] == NULL, "of_property_read_string_index() failure; rc=%i\n", rc);
+2025-06-04T05:23:48.9244690Z ./drivers/of/unittest.c:762:	rc = of_property_read_string_index(np, "unterminated-string", 0, strings);
+2025-06-04T05:23:48.9245329Z ./drivers/of/unittest.c:763:	unittest(rc == -EILSEQ && strings[0] == NULL, "of_property_read_string_index() failure; rc=%i\n", rc);
+2025-06-04T05:23:48.9245977Z ./drivers/of/unittest.c:764:	rc = of_property_read_string_index(np, "unterminated-string-list", 0, strings);
+2025-06-04T05:23:48.9246637Z ./drivers/of/unittest.c:765:	unittest(rc == 0 && !strcmp(strings[0], "first"), "of_property_read_string_index() failure; rc=%i\n", rc);
+2025-06-04T05:23:48.9247464Z ./drivers/of/unittest.c:767:	rc = of_property_read_string_index(np, "unterminated-string-list", 2, strings); /* should fail */
+2025-06-04T05:23:48.9248166Z ./drivers/of/unittest.c:768:	unittest(rc == -EILSEQ && strings[0] == NULL, "of_property_read_string_index() failure; rc=%i\n", rc);
+2025-06-04T05:23:48.9248721Z ./drivers/of/unittest.c:771:	/* of_property_read_string_array() tests */
+2025-06-04T05:23:48.9249592Z ./drivers/of/unittest.c:772:	rc = of_property_read_string_array(np, "string-property", strings, 4);
+2025-06-04T05:23:48.9250514Z ./drivers/of/unittest.c:774:	rc = of_property_read_string_array(np, "phandle-list-names", strings, 4);
+2025-06-04T05:23:49.1891007Z ./drivers/of/unittest.c:776:	rc = of_property_read_string_array(np, "unterminated-string", strings, 4);
+2025-06-04T05:23:49.1891763Z ./drivers/of/unittest.c:779:	rc = of_property_read_string_array(np, "unterminated-string-list", strings, 4);
+2025-06-04T05:23:49.1892434Z ./drivers/of/unittest.c:783:	rc = of_property_read_string_array(np, "unterminated-string-list", strings, 2);
+2025-06-04T05:23:49.1893659Z ./drivers/of/unittest.c:784:	unittest(rc == 2 && strings[2] == NULL, "of_property_read_string_array() failure; rc=%i\n", rc);
+2025-06-04T05:23:49.1894446Z ./drivers/of/unittest.c:786:	rc = of_property_read_string_array(np, "phandle-list-names", strings, 1);
+2025-06-04T05:23:49.1895440Z ./drivers/of/unittest.c:915:	ret = of_property_read_string(parent, "prop-update", &propstr);
+2025-06-04T05:23:49.1896282Z ./drivers/of/resolver.c:322:		err = of_property_read_string(tree_symbols,
+2025-06-04T05:23:49.1896994Z ./lib/vsprintf.c:2198:			ret = of_property_read_string(dn, "compatible", &p);
+2025-06-04T05:23:49.1897509Z ./lib/genalloc.c:898:		of_property_read_string(np_pool, "label", &name);
+2025-06-04T05:23:49.1898033Z ./net/core/of_net.c:34:	err = of_property_read_string(np, "phy-mode", &pm);
+2025-06-04T05:23:49.1898616Z ./net/core/of_net.c:36:		err = of_property_read_string(np, "phy-connection-type", &pm);
+2025-06-04T05:23:49.1899195Z ./net/qrtr/genpool.c:611:	rc = of_property_read_string(dev->of_node, "label", &qdev->label);
+2025-06-04T05:23:49.1899903Z ========= 查找 HMBIRD =========
+2025-06-04T05:23:50.6513860Z ./arch/arm64/configs/vendor/sun_perf.config:311:CONFIG_HMBIRD_SCHED_GKI=y
+2025-06-04T05:23:50.6514539Z ./kernel/sched/walt/walt.h:1455:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6515361Z ./kernel/sched/walt/cpufreq_walt.c:96:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6516717Z ./kernel/sched/walt/walt_cfs.c:1152:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6517555Z ./kernel/sched/walt/walt_cfs.c:1481:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6518387Z ./kernel/sched/walt/walt_cfs.c:1557:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6519246Z ./kernel/sched/walt/walt_cfs.c:1617:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6519927Z ./kernel/sched/walt/walt_rt.c:311:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6520717Z ./kernel/sched/walt/walt_rt.c:434:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6521455Z ./kernel/sched/walt/Kconfig:42:config HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6522222Z ./kernel/sched/walt/Kconfig:43:	bool "GKI Support for HMBIRD_SCHED"
+2025-06-04T05:23:50.6523068Z ./kernel/sched/walt/Kconfig:46:	  Enable GKI Support for HMBIRD_SCHED.
+2025-06-04T05:23:50.6523971Z ./kernel/sched/walt/sched_avg.c:363:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6524381Z ./kernel/sched/walt/walt.c:92:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6524766Z ./kernel/sched/walt/walt.c:2144:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6525138Z ./kernel/sched/walt/walt.c:2558:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6525502Z ./kernel/sched/walt/walt.c:4815:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6525879Z ./kernel/sched/walt/walt.c:4891:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6526236Z ./kernel/sched/walt/walt.c:5057:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6526620Z ./kernel/sched/walt/walt.c:5138:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6527177Z ./kernel/sched/walt/walt.c:5199:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6527534Z ./kernel/sched/walt/walt.c:5295:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6527896Z ./kernel/sched/walt/walt.c:5589:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6528273Z ./kernel/sched/walt/walt_lb.c:715:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6528656Z ./kernel/sched/walt/walt_lb.c:912:#ifdef CONFIG_HMBIRD_SCHED_GKI
+2025-06-04T05:23:50.6529068Z ./kernel/sched/walt/walt_lb.c:1131:#ifdef CONFIG_HMBIRD_SCHED_GKI
