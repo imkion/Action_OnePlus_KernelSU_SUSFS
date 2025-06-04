@@ -319,12 +319,18 @@ jobs:
               LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki kernel_platform/scx.config
             else
               LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
-              DEFCONFIG_PATH=$(find kernel_platform -name .config | head -n 1)
-              [ -f "$DEFCONFIG_PATH" ] && grep -q CONFIG_SCHED_CLASS_EXT=y "$DEFCONFIG_PATH" || echo "CONFIG_SCHED_CLASS_EXT=y" >> "$DEFCONFIG_PATH"
-              [ -f "$DEFCONFIG_PATH" ] && grep -q CONFIG_SCHED_DEBUG=y "$DEFCONFIG_PATH" || echo "CONFIG_SCHED_DEBUG=y" >> "$DEFCONFIG_PATH"
-              [ -f "$DEFCONFIG_PATH" ] && make -C $(dirname "$DEFCONFIG_PATH") ARCH=arm64 olddefconfig
+              DEFCONFIG_PATH=$(find kernel_platform -name .config | grep -v '\.git' | head -n 1)
+              if [[ -z "$DEFCONFIG_PATH" ]]; then
+                echo "ERROR: 未找到 .config，SCX 检查失败！"
+                exit 1
+              fi
+              if ! grep -q CONFIG_SCHED_CLASS_EXT=y "$DEFCONFIG_PATH"; then
+                echo "CONFIG_SCHED_CLASS_EXT=y" >> "$DEFCONFIG_PATH"
+                echo "CONFIG_SCHED_DEBUG=y" >> "$DEFCONFIG_PATH"
+                make -C "$(dirname "$DEFCONFIG_PATH")" ARCH=arm64 olddefconfig
+              fi
+              grep CONFIG_SCHED_CLASS_EXT "$DEFCONFIG_PATH" || (echo "SCX未启用!" && exit 1)
             fi
-            grep CONFIG_SCHED_CLASS_EXT kernel_platform/out/.config || (echo "SCX未启用!" && exit 1)
           fi
 
       - name: 制作AnyKernel3内核刷机包
