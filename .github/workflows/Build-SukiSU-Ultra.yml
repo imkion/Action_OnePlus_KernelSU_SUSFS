@@ -232,13 +232,20 @@ jobs:
       - name: 注入并启用 sched_ext (SCX) 调度补丁
         run: |
           set -e
-          cd kernel_workspace/kernel_platform/common
-          wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
+          cd kernel_workspace/kernel_platform/
+          # 1. Clone sched_ext 源码
+          git clone --depth=1 https://github.com/egcd123/sched_ext.git
+          cp -r ./sched_ext/* ./common/kernel/sched
+          rm -rf ./sched_ext/.git
+          cd ./common/kernel/sched
+          # 2. 自动插入 include 语句（避免重复插入）
+          grep -q 'hmbird_sched_proc_main.c' build_policy.c || \
+            sed -i '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
+          cd ../../..
+          # 3. 只 patch 结构文件（Kconfig/Makefile/build_policy.c）
+          wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx_struct.patch
           patch -p1 --batch --forward < enable_scx.patch
-          for f in kernel/sched/ext.c kernel/sched/scx_main.c kernel/sched/hmbird_sched_proc.h kernel/sched/hmbird_sched_proc_main.c; do
-            [[ -f "$f" ]] || { echo "$f 缺失，patch失败"; exit 1; }
-          done
-          echo "✅ sched_ext (SCX) 调度补丁已注入并配置完成"
+          echo "✅ sched_ext (SCX) 代码与结构已注入"
 
       - name: 写入SCX配置文件
         run: |
