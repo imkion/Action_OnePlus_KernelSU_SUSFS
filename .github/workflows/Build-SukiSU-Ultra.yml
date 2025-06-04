@@ -75,14 +75,6 @@ on:
           - "5.15"
           - "6.1"
           - "6.6"
-      BUILD_METHOD:
-        description: "编译方式"
-        type: choice
-        required: true
-        default: gki
-        options:
-          - gki
-          - perf
       ZRAM:
         description: "是否启用更多ZRAM（推荐开启）"
         type: boolean
@@ -238,6 +230,24 @@ jobs:
             fi
           done
 
+      - name: 注入并启用 sched_ext (SCX) 调度补丁
+        run: |
+          set -e
+          cd kernel_workspace/kernel_platform/
+          git clone https://github.com/HanKuCha/sched_ext.git
+          cp -r sched_ext/* common/kernel/sched
+          rm -rf sched_ext/.git
+          cd common/kernel/sched
+          sed -i.bak '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
+          cd ..
+          wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
+          patch -p1 < enable_scx.patch
+
+      - name: 检查 sched_ext Makefile 配置
+        run: |
+          grep SCHED_CLASS_EXT kernel_workspace/kernel_platform/common/kernel/sched/Makefile || \
+          (echo "SCX Makefile 未正确配置，需手动添加 obj-$(CONFIG_SCHED_CLASS_EXT) ..." && exit 1)
+
       - name: 写入SUSFS与ZRAM内核配置
         run: |
           cd kernel_workspace/kernel_platform
@@ -277,31 +287,24 @@ jobs:
             echo "CONFIG_ZRAM_WRITEBACK=y   # 启用ZRAM写回支持" >> "$DEFCONFIG"
           fi
 
-          sed -i 's/check_defconfig//' ./common/build.config.gki
+          grep -qxF 'CONFIG_SCHED_CLASS_EXT=y' "$DEFCONFIG" || echo 'CONFIG_SCHED_CLASS_EXT=y' >> "$DEFCONFIG" #使用SCX调速器
 
-      - name: 注入sched_ext调度模块
-        run: |
-          cd kernel_workspace/kernel_platform/
-          git clone https://github.com/HanKuCha/sched_ext.git
-          cp -r sched_ext/* common/kernel/sched
-          rm -rf sched_ext/.git
-          cd common/kernel/sched
-          sed -i.bak '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
+          sed -i 's/check_defconfig//' ./common/build.config.gki
 
       - name: 编译内核
         run: |
           set -e
           cd kernel_workspace/kernel_platform/common
-          if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
+          # if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
             export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
             make LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out gki_defconfig
             make -j$(nproc) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang \
               RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
               PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole O=out all
-          else
-            cd $GITHUB_WORKSPACE/kernel_workspace
-            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
-          fi
+          # else
+          #   cd $GITHUB_WORKSPACE/kernel_workspace
+          #   LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
+          # fi
 
       - name: 制作AnyKernel3内核刷机包
         run: |
