@@ -313,10 +313,10 @@ jobs:
             make -j$(nproc) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang \
               RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
               PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole O=out all
-          # else
-          #   cd $GITHUB_WORKSPACE/kernel_workspace
-          #   LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
-          # fi
+          else
+            cd $GITHUB_WORKSPACE/kernel_workspace
+            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
+          fi
 
       - name: 制作AnyKernel3内核刷机包
         run: |
