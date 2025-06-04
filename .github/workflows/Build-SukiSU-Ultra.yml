@@ -65,15 +65,15 @@ on:
           - android14
           - android15
       KERNEL_VERSION:
-       type: choice
-       description: "内核版本"
-       required: true
-       default: "5.15"
-       options:
-         - "5.10"
-         - "5.15"
-         - "6.1"
-         - "6.6"
+        type: choice
+        description: "内核版本"
+        required: true
+        default: "5.15"
+        options:
+          - "5.10"
+          - "5.15"
+          - "6.1"
+          - "6.6"
       BUILD_METHOD:
         type: choice
         description: "编译方式"
@@ -95,7 +95,7 @@ jobs:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
-      CCACHE_DIR: /home/runner/.ccache  
+      CCACHE_DIR: /home/runner/.ccache
       CCACHE_MAXSIZE: 8G
     steps:
       - name: Maximize build space
@@ -107,6 +107,29 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y python3 git curl ccache unzip libelf-dev lld llvm clang llvm-dev
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Get manifest hash for cache key
+        id: manifest_hash
+        run: |
+          mkdir -p kernel_workspace
+          curl -LSs "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}.xml" -o kernel_workspace/${{ github.event.inputs.FEIL }}.xml
+          echo "hash=$(sha256sum kernel_workspace/${{ github.event.inputs.FEIL }}.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Restore ccache
+        uses: actions/cache@v3
+        with:
+          path: /home/runner/.ccache
+          key: ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
+          restore-keys: |
+            ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-
 
       - name: Selected Input Parameters (Debug)
         run: |
@@ -123,24 +146,18 @@ jobs:
           git config --global user.name "FurLC"
           git config --global user.email "qq441791056@163.com"
 
-      - name: Install dependencies
-        run: |
-          sudo apt update && sudo apt upgrade -y
-          sudo apt install -y python3 git curl ccache unzip
-
-      - name: Restore ccache
-        uses: actions/cache@v3
-        with:
-          path: /home/runner/.ccache
-          key: ccache-${{ runner.os }}-${{ github.ref }}
-          restore-keys: |
-            ccache-${{ runner.os }}-
-
       - name: Install repo tool
         run: |
-          curl https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
+          curl --retry 3 https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
+
+      - name: Initialize repo and sync
+        run: |
+          set -e
+          mkdir -p kernel_workspace && cd kernel_workspace
+          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+          repo sync --force-sync --no-tags --no-clone-bundle -j$(nproc)
 
       - name: Initialize repo and sync
         run: |
