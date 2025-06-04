@@ -13,7 +13,7 @@ jobs:
       - name: Clone OnePlus kernel source
         run: |
           # 修改为你需要的 OnePlus 源码仓库
-          REPO_URL="https://github.com/OnePlusOSS/android_kernel_oneplus_sm8350.git"
+          REPO_URL="https://github.com/OnePlusOSS/android_kernel_oneplus_sm8750.git"
           git clone --depth=1 $REPO_URL oneplus_kernel
 
       - name: Search for version_type references
