@@ -85,7 +85,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # ccache编译加速相关环境变量
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
@@ -238,7 +237,6 @@ jobs:
           cp -r sched_ext/* common/kernel/sched
           rm -rf sched_ext/.git
           cd common
-          # 先删除，保证 patch 能新建出最新内容
           rm -f kernel/sched/hmbird_sched_proc.h kernel/sched/hmbird_sched_proc_main.c
           wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
           patch -p1 --batch --forward < enable_scx.patch
@@ -270,37 +268,36 @@ jobs:
           cd kernel_workspace/kernel_platform
           DEFCONFIG=./common/arch/arm64/configs/gki_defconfig
 
-          # SUSFS/KSU/ZRAM配置
-          echo "# SUSFS/KSU基础配置"                                  >> "$DEFCONFIG"
-          echo "CONFIG_KSU=y"                                        >> "$DEFCONFIG"
-          echo "CONFIG_KPM=y"                                        >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_SUS_SU=n"                           >> "$DEFCONFIG"
-          echo "CONFIG_KSU_MANUAL_HOOK=y"                            >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS=y"                                  >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y"                  >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_SUS_PATH=y"                         >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"                        >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y"   >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y"          >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"                        >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n"                    >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y"                       >> "$DEFCONFIG"
+          echo "# SUSFS/KSU基础配置" >> "$DEFCONFIG"
+          echo "CONFIG_KSU=y" >> "$DEFCONFIG"
+          echo "CONFIG_KPM=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_MANUAL_HOOK=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> "$DEFCONFIG"
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"                      >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"                       >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"           >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"      >> "$DEFCONFIG"
-          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                    >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> "$DEFCONFIG"
 
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
-            echo "# 启用ZRAM及主流压缩算法支持"                 >> "$DEFCONFIG"
-            echo "CONFIG_ZSMALLOC=y"                               >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4HC=y"                           >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4K=y"                            >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4KD=y"                           >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_842=y"                             >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y"                      >> "$DEFCONFIG"
-            echo "CONFIG_ZRAM_WRITEBACK=y"                         >> "$DEFCONFIG"
+            echo "# 启用ZRAM及主流压缩算法支持" >> "$DEFCONFIG"
+            echo "CONFIG_ZSMALLOC=y" >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4HC=y" >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4K=y" >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4KD=y" >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_842=y" >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y" >> "$DEFCONFIG"
+            echo "CONFIG_ZRAM_WRITEBACK=y" >> "$DEFCONFIG"
           fi
 
           sed -i 's/check_defconfig//' ./common/build.config.gki
@@ -308,7 +305,6 @@ jobs:
       - name: 编译内核
         run: |
           set -e
-          # 判断内核版本，选择编译分支
           if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
             cd kernel_workspace/kernel_platform/common
             export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
@@ -319,15 +315,14 @@ jobs:
             make -j2 LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out all
           else
             cd kernel_workspace
-            # 检查oplus_build_kernel.sh是否支持merge_config参数
             if grep -q merge_config kernel_platform/oplus/build/oplus_build_kernel.sh; then
               LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki kernel_platform/scx.config
             else
               LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
-              # 尝试暴力写入
               DEFCONFIG_PATH=$(find kernel_platform -name .config | head -n 1)
-              [ -f "$DEFCONFIG_PATH" ] && echo "CONFIG_SCHED_CLASS_EXT=y" >> "$DEFCONFIG_PATH"
-              [ -f "$DEFCONFIG_PATH" ] && echo "CONFIG_SCHED_DEBUG=y" >> "$DEFCONFIG_PATH"
+              [ -f "$DEFCONFIG_PATH" ] && grep -q CONFIG_SCHED_CLASS_EXT=y "$DEFCONFIG_PATH" || echo "CONFIG_SCHED_CLASS_EXT=y" >> "$DEFCONFIG_PATH"
+              [ -f "$DEFCONFIG_PATH" ] && grep -q CONFIG_SCHED_DEBUG=y "$DEFCONFIG_PATH" || echo "CONFIG_SCHED_DEBUG=y" >> "$DEFCONFIG_PATH"
+              [ -f "$DEFCONFIG_PATH" ] && make -C $(dirname "$DEFCONFIG_PATH") ARCH=arm64 olddefconfig
             fi
             grep CONFIG_SCHED_CLASS_EXT kernel_platform/out/.config || (echo "SCX未启用!" && exit 1)
           fi
