@@ -1,4 +1,12 @@
+diff --git a/drivers/Makefile b/drivers/Makefile
+index e5c0c4a..abcd123 100644
+--- a/drivers/Makefile
++++ b/drivers/Makefile
+@@ -1,0 +1,2 @@
++obj-y += hmbird_patch.o
++
 diff --git a/drivers/hmbird_patch.c b/drivers/hmbird_patch.c
+new file mode 100644
 index 0000000..c99fixed
 --- /dev/null
 +++ b/drivers/hmbird_patch.c
