@@ -7,13 +7,19 @@ index e69de29..a1b2c3d 100644
 +    bool "Enable sched_ext support"
 +    default n
 +    help
-+      Enable OnePlus/OPPO sched_ext (scx) 调度特性。
++      Enable OnePlus/OPPO sched_ext (SCX) 调度特性。
 +
 +config SLIM_SCHED
 +    bool "Enable slim_sched interface"
 +    default n
 +    help
 +      Enable slim_sched 相关调度接口与调优参数。
+diff --git a/kernel/sched/Makefile b/kernel/sched/Makefile
+index e69de29..e1b2c3d 100644
+--- a/kernel/sched/Makefile
++++ b/kernel/sched/Makefile
+@@ ... @@
++obj-$(CONFIG_SCHED_CLASS_EXT) += ext.o scx_main.o hmbird_sched_proc_main.o
 diff --git a/kernel/sched/build_policy.c b/kernel/sched/build_policy.c
 index abcdef0..1234567 100644
 --- a/kernel/sched/build_policy.c
@@ -90,58 +96,45 @@ index 0000000..e2a3b24
 +#include <linux/cpufreq.h>
 +#include "hmbird_sched_proc.h"
 +
-+#define HMBIRD_SCHED_PROC_DIR "hmbird_sched"
-+#define SLIM_FREQ_GOV_DIR       "slim_freq_gov"
-+#define LOAD_TRACK_DIR          "slim_walt"
-+#define HMBIRD_PROC_PERMISSION  0666
-+
++// 仅示例，具体变量和逻辑可根据SCX实际补丁完善
 +int scx_enable;
-+int partial_enable;
-+int cpuctrl_high_ratio = 55;
-+int cpuctrl_low_ratio = 40;
-+int slim_stats;
-+int hmbirdcore_debug = 0;
-+int slim_for_app;
-+int misfit_ds = 90;
-+unsigned int highres_tick_ctrl;
-+unsigned int highres_tick_ctrl_dbg;
-+int cpu7_tl = 70;
-+int slim_walt_ctrl;
-+int slim_walt_dump;
-+int slim_walt_policy;
-+int slim_gov_debug;
-+int scx_gov_ctrl = 1;
-+int sched_ravg_window_frame_per_sec = 125;
-+int parctrl_high_ratio = 55;
-+int parctrl_low_ratio = 40;
-+int parctrl_high_ratio_l = 65;
-+int parctrl_low_ratio_l = 50;
-+int isoctrl_high_ratio = 75;
-+int isoctrl_low_ratio = 60;
-+int isolate_ctrl;
-+int iso_free_rescue;
-+int heartbeat;
-+int heartbeat_enable;
-+int watchdog_enable;
-+int save_gov;
-+unsigned int cpu_cluster_masks;
 +
-+char saved_gov[NR_CPUS][16];
++static int hmbird_common_show(struct seq_file *m, void *v) { return 0; }
++static int hmbird_common_open(struct inode *inode, struct file *file) { return 0; }
++static ssize_t hmbird_common_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos) { return count; }
+diff --git a/kernel/sched/ext.c b/kernel/sched/ext.c
+new file mode 100644
+index 0000000..b1e2c34
+--- /dev/null
++++ b/kernel/sched/ext.c
+@@ ... @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2024 Oplus. All rights reserved.
++ * Example stub for ext.c. Please fill with actual logic!
++ */
++#include <linux/module.h>
++#include <linux/kernel.h>
 +
-+static int set_proc_buf_val(struct file *file, const char __user *buf, size_t count, int *val)
++void ext_sched_logic(void)
 +{
-+	char kbuf[5] = {0};
-+	int err;
++    pr_info("EXT sched logic placeholder\n");
++}
+diff --git a/kernel/sched/scx_main.c b/kernel/sched/scx_main.c
+new file mode 100644
+index 0000000..c1f2e34
+--- /dev/null
++++ b/kernel/sched/scx_main.c
+@@ ... @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2024 Oplus. All rights reserved.
++ * Example stub for scx_main.c. Please fill with actual logic!
++ */
++#include <linux/module.h>
++#include <linux/kernel.h>
 +
-+	if (count >= 5)
-+		return -EFAULT;
-+
-+	if (copy_from_user(kbuf, buf, count)) {
-+		pr_err("hmbird_sched : Failed to copy_from_user\n");
-+		return -EFAULT;
-+	}
-+
-+	err = kstrtoint(strstrip(kbuf), 0, val);
-+	if (err < 0) {
-+		pr_err("hmbird_sched: Failed to exec kstrtoint\n");
-+		return -E
++void scx_do_something(void)
++{
++    pr_info("SCX logic placeholder\n");
++}
