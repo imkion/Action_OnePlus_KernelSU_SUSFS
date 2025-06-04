@@ -249,7 +249,7 @@ jobs:
       - name: 检查 sched_ext Makefile 配置
         run: |
           grep SCHED_CLASS_EXT kernel_workspace/kernel_platform/common/kernel/sched/Makefile || \
-          (echo "SCX Makefile 未正确配置，需手动添加 obj-$(CONFIG_SCHED_CLASS_EXT) ..." && exit 1)
+          (echo "SCX Makefile 未正确配置，需手动添加 obj-\$(CONFIG_SCHED_CLASS_EXT) ..." && exit 1)
 
       - name: 写入SUSFS与ZRAM内核配置
         run: |
