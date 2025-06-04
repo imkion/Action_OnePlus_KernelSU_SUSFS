@@ -1,0 +1,43 @@
+name: Extract oplus_build_kernel.sh from repo workspace
+
+on:
+  workflow_dispatch:
+
+jobs:
+  extract_oplus_build_kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 安装repo工具
+        run: |
+          curl --retry 3 https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
+          chmod a+x ~/repo
+          sudo mv ~/repo /usr/local/bin/repo
+
+      - name: 初始化repo并同步源码
+        run: |
+          mkdir -p kernel_workspace
+          cd kernel_workspace
+          # 你可以根据实际manifest参数调整
+          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
+            -b refs/heads/oneplus/sm8550 \
+            -m oneplus_ace3_v.xml --depth=1
+          repo sync --force-sync --no-tags --no-clone-bundle -j$(nproc)
+
+      - name: 查找并输出 oplus_build_kernel.sh
+        run: |
+          cd kernel_workspace
+          file_path=$(find . -type f -name "oplus_build_kernel.sh" | head -n 1)
+          if [[ -z "$file_path" ]]; then
+            echo "::error::未找到 oplus_build_kernel.sh"
+            exit 1
+          fi
+          echo "脚本路径: $file_path"
+          mkdir -p ../extracted_script
+          cp "$file_path" ../extracted_script/
+          cat "$file_path"
+
+      - name: 上传 oplus_build_kernel.sh
+        uses: actions/upload-artifact@v4
+        with:
+          name: oplus_build_kernel.sh
+          path: extracted_script/oplus_build_kernel.sh
