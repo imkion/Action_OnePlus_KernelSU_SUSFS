@@ -260,62 +260,76 @@ jobs:
             echo "SCX Makefile 检查通过"
           fi
 
-      - name: 写入SUSFS与ZRAM内核配置
+      - name: 写入SCX配置文件
+        run: |
+          echo "CONFIG_SCHED_CLASS_EXT=y" > kernel_workspace/kernel_platform/scx.config
+          echo "CONFIG_SCHED_DEBUG=y" >> kernel_workspace/kernel_platform/scx.config
+
+      - name: 写入SUSFS、ZRAM内核配置
         run: |
           cd kernel_workspace/kernel_platform
           DEFCONFIG=./common/arch/arm64/configs/gki_defconfig
 
-          # SUSFS/KSU 基础配置
+          # SUSFS/KSU/ZRAM配置
           echo "# SUSFS/KSU基础配置"                                  >> "$DEFCONFIG"
-          echo "CONFIG_KSU=y"                                        >> "$DEFCONFIG"  # 启用KernelSU
-          echo "CONFIG_KPM=y"                                        >> "$DEFCONFIG"  # 启用Kernel Patch Manager
-          echo "CONFIG_KSU_SUSFS_SUS_SU=n"                           >> "$DEFCONFIG"  # SUSFS su兼容模式（关闭）
-          echo "CONFIG_KSU_MANUAL_HOOK=y"                            >> "$DEFCONFIG"  # 手动挂钩
-          echo "CONFIG_KSU_SUSFS=y"                                  >> "$DEFCONFIG"  # 启用SUSFS
-          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y"                  >> "$DEFCONFIG"  # Magic Mount特性
-          echo "CONFIG_KSU_SUSFS_SUS_PATH=y"                         >> "$DEFCONFIG"  # SUSFS路径支持
-          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"                        >> "$DEFCONFIG"  # SUSFS挂载点支持
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y"   >> "$DEFCONFIG"  # 自动添加默认挂载
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y"          >> "$DEFCONFIG"  # 自动添加BIND挂载
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"                        >> "$DEFCONFIG"  # 启用SUSFS KSTAT支持
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n"                    >> "$DEFCONFIG"  # 关闭SUSFS OverlayFS
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y"                       >> "$DEFCONFIG"  # 尝试自动卸载
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$DEFCONFIG" # BIND挂载自动卸载
-          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"                      >> "$DEFCONFIG"  # 伪装UNAME
-          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"                       >> "$DEFCONFIG"  # 启用日志
-          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"           >> "$DEFCONFIG"  # 隐藏KSU/SUSFS符号
-          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"      >> "$DEFCONFIG"  # 伪装cmdline/bootconfig
-          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                    >> "$DEFCONFIG"  # 打开重定向支持
+          echo "CONFIG_KSU=y"                                        >> "$DEFCONFIG"
+          echo "CONFIG_KPM=y"                                        >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_SU=n"                           >> "$DEFCONFIG"
+          echo "CONFIG_KSU_MANUAL_HOOK=y"                            >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS=y"                                  >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y"                  >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_PATH=y"                         >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"                        >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y"   >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y"          >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"                        >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n"                    >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y"                       >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"                      >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"                       >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"           >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"      >> "$DEFCONFIG"
+          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                    >> "$DEFCONFIG"
 
-          # 如果启用ZRAM，写入ZRAM相关配置，每项均有注释
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
             echo "# 启用ZRAM及主流压缩算法支持"                 >> "$DEFCONFIG"
-            echo "CONFIG_ZSMALLOC=y   # 启用ZRAM专用内存分配器" >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4HC=y   # LZ4高压缩比算法"    >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4K=y    # LZ4K压缩算法"       >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4KD=y   # LZ4KD压缩算法"      >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_842=y     # 842硬件压缩算法"    >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y   # OPLUS定制LZ4K" >> "$DEFCONFIG"
-            echo "CONFIG_ZRAM_WRITEBACK=y   # 启用ZRAM写回支持" >> "$DEFCONFIG"
+            echo "CONFIG_ZSMALLOC=y"                               >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4HC=y"                           >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4K=y"                            >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4KD=y"                           >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_842=y"                             >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y"                      >> "$DEFCONFIG"
+            echo "CONFIG_ZRAM_WRITEBACK=y"                         >> "$DEFCONFIG"
           fi
-
-          grep -qxF 'CONFIG_SCHED_CLASS_EXT=y' "$DEFCONFIG" || echo 'CONFIG_SCHED_CLASS_EXT=y' >> "$DEFCONFIG" #使用SCX调速器
 
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
       - name: 编译内核
         run: |
           set -e
-          cd kernel_workspace/kernel_platform/common
+          # 判断内核版本，选择编译分支
           if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
+            cd kernel_workspace/kernel_platform/common
             export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
             make LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out gki_defconfig
-            make -j$(nproc) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang \
-              RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
-              PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole O=out all
+            scripts/kconfig/merge_config.sh -m out/.config ../../scx.config
+            yes "" | make ARCH=arm64 O=out olddefconfig
+            grep CONFIG_SCHED_CLASS_EXT out/.config || (echo "SCX未启用!" && exit 1)
+            make -j2 LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out all
           else
-            cd $GITHUB_WORKSPACE/kernel_workspace
-            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
+            cd kernel_workspace
+            # 检查oplus_build_kernel.sh是否支持merge_config参数
+            if grep -q merge_config kernel_platform/oplus/build/oplus_build_kernel.sh; then
+              LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki kernel_platform/scx.config
+            else
+              LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
+              # 尝试暴力写入
+              DEFCONFIG_PATH=$(find kernel_platform -name .config | head -n 1)
+              [ -f "$DEFCONFIG_PATH" ] && echo "CONFIG_SCHED_CLASS_EXT=y" >> "$DEFCONFIG_PATH"
+              [ -f "$DEFCONFIG_PATH" ] && echo "CONFIG_SCHED_DEBUG=y" >> "$DEFCONFIG_PATH"
+            fi
+            grep CONFIG_SCHED_CLASS_EXT kernel_platform/out/.config || (echo "SCX未启用!" && exit 1)
           fi
 
       - name: 制作AnyKernel3内核刷机包
