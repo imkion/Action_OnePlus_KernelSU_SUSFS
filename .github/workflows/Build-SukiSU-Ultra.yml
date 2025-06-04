@@ -246,10 +246,19 @@ jobs:
           sed -i.bak '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
           echo "✅ sched_ext (SCX) 调度补丁已注入并配置完成"
 
-      - name: 检查 sched_ext Makefile 配置
+      - name: 自动补全 sched_ext Makefile 配置
         run: |
-          grep SCHED_CLASS_EXT kernel_workspace/kernel_platform/common/kernel/sched/Makefile || \
-          (echo "SCX Makefile 未正确配置，需手动添加 obj-\$(CONFIG_SCHED_CLASS_EXT) ..." && exit 1)
+          MAKEFILE="kernel_workspace/kernel_platform/common/kernel/sched/Makefile"
+          SCX_OBJ="ext.o scx_main.o hmbird_sched_proc_main.o"
+          LINE="obj-\$(CONFIG_SCHED_CLASS_EXT) += $SCX_OBJ"
+          if ! grep -q 'obj-.*CONFIG_SCHED_CLASS_EXT' "$MAKEFILE"; then
+            echo "" >> "$MAKEFILE"
+            echo "# Auto-added by GitHub Actions: SCX调度器自动补全" >> "$MAKEFILE"
+            echo "$LINE" >> "$MAKEFILE"
+            echo "已自动补全 SCX Makefile 配置：$LINE"
+          else
+            echo "SCX Makefile 检查通过"
+          fi
 
       - name: 写入SUSFS与ZRAM内核配置
         run: |
