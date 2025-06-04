@@ -200,6 +200,7 @@ jobs:
           cp -r $SUKIPATCH/other/zram/lz4k/crypto/* $COMMON/crypto/ 2>/dev/null || true
           cp -r $SUKIPATCH/other/zram/lz4k_oplus $COMMON/lib/ 2>/dev/null || true
           cp ../ogki2gki.patch $COMMON/
+          cp ../ogki2gki_c99fix.patch $COMMON/
 
           cd $COMMON
           SUSFS_PATCH="50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch"
