@@ -1,27 +1,58 @@
-name: OnePlus Source Code Device Tree Search (Deubug)
+name: OGKI/GKI Check Finder
 
 on:
   workflow_dispatch:
+    inputs:
+      CPU:
+        description: "分支（如 sm8750）"
+        required: true
+        default: sm8750
+      FEIL:
+        description: "Manifest 文件名（如 oneplus_ace3_pro）不带.xml"
+        required: true
+        default: oneplus_ace3_pro
 
 jobs:
-  fetch-and-search:
+  search-ogki:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout this repo
-        uses: actions/checkout@v4
-
-      - name: Clone OnePlus kernel source
+      - name: 安装 repo 工具
         run: |
-          # 修改为你需要的 OnePlus 源码仓库
-          REPO_URL="https://github.com/OnePlusOSS/android_kernel_oneplus_sm8750.git"
-          git clone --depth=1 $REPO_URL oneplus_kernel
+          sudo apt-get update
+          sudo apt-get install -y curl python3 git
+          curl https://storage.googleapis.com/git-repo-downloads/repo > repo
+          chmod a+x repo
+          sudo mv repo /usr/local/bin/repo
 
-      - name: Search for version_type references
+      - name: 初始化并同步完整 kernel manifest 源码
         run: |
-          cd oneplus_kernel
-          echo "========= 查找 version_type 相关 ========="
-          grep -rn "version_type" . || true
-          echo "========= 查找 of_property_read_string ========="
-          grep -rn "of_property_read_string" . || true
-          echo "========= 查找 HMBIRD ========="
-          grep -rn "HMBIRD" . || true
+          mkdir kernel_workspace && cd kernel_workspace
+          # 分支与 manifest 变量和你原 workflow 保持一致
+          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+          repo sync -c -j4
+
+      - name: 查找 OGKI/GKI 相关校验代码
+        run: |
+          cd kernel_workspace
+          echo "========= version_type ========="
+          grep -rn 'version_type' . || true
+          echo "========= GKI ========="
+          grep -rn 'GKI' . || true
+          echo "========= HMBIRD ========="
+          grep -rn 'HMBIRD' . || true
+          echo "========= oplus ========="
+          grep -rn 'oplus' . || true
+          echo "========= of_property_read_string ========="
+          grep -rn 'of_property_read_string' . || true
+          # 汇总所有结果到 artifact
+          (grep -rn 'version_type' . || true; \
+           grep -rn 'GKI' . || true; \
+           grep -rn 'HMBIRD' . || true; \
+           grep -rn 'oplus' . || true; \
+           grep -rn 'of_property_read_string' . || true) > ../ogki_check_grep.txt
+
+      - name: 上传查找结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: ogki_check_grep
+          path: ogki_check_grep.txt
