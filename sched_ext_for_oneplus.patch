@@ -1,0 +1,147 @@
+diff --git a/kernel/sched/Kconfig b/kernel/sched/Kconfig
+index e69de29..a1b2c3d 100644
+--- a/kernel/sched/Kconfig
++++ b/kernel/sched/Kconfig
+@@ ... @@
++config SCHED_CLASS_EXT
++    bool "Enable sched_ext support"
++    default n
++    help
++      Enable OnePlus/OPPO sched_ext (scx) 调度特性。
++
++config SLIM_SCHED
++    bool "Enable slim_sched interface"
++    default n
++    help
++      Enable slim_sched 相关调度接口与调优参数。
+diff --git a/kernel/sched/build_policy.c b/kernel/sched/build_policy.c
+index abcdef0..1234567 100644
+--- a/kernel/sched/build_policy.c
++++ b/kernel/sched/build_policy.c
+@@ ... @@
+ #ifdef CONFIG_SCHED_CLASS_EXT
+ # include "ext.c"
++# include "hmbird_sched_proc_main.c"
+ #endif
++
++#ifdef CONFIG_SLIM_SCHED
++# include "slim_sysctl.c"
++#endif
+diff --git a/kernel/sched/hmbird_sched_proc.h b/kernel/sched/hmbird_sched_proc.h
+new file mode 100644
+index 0000000..f1e2d45
+--- /dev/null
++++ b/kernel/sched/hmbird_sched_proc.h
+@@ ... @@
++#ifndef __HMBIRD_SCHED_PROC_H__
++#define __HMBIRD_SCHED_PROC_H__
++
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++
++#define HMBIRD_CREATE_PROC_ENTRY(name, mode, parent, proc_ops) \
++	do { \
++		if (!proc_create(name, mode, parent, proc_ops)) { \
++			pr_err("Error creating proc entry %s\n", name); \
++			return -ENOMEM; \
++		} \
++	} while (0)
++
++#define HMBIRD_CREATE_PROC_ENTRY_DATA(name, mode, parent, proc_ops, data) \
++	do { \
++		if (!proc_create_data(name, mode, parent, proc_ops, data)) { \
++			pr_err("Error creating proc entry with data %s\n", name); \
++			return -ENOMEM; \
++		} \
++	} while (0)
++
++#define HMBIRD_PROC_OPS(name, open_func, write_func) \
++	static const struct proc_ops name##_proc_ops = { \
++		.proc_open = open_func, \
++		.proc_write = write_func, \
++		.proc_read = seq_read, \
++		.proc_lseek = seq_lseek, \
++		.proc_release = single_release, \
++	}
++
++static ssize_t hmbird_common_write(struct file *file, \
++				   const char __user *buf, \
++				   size_t count, loff_t *ppos);
++static int hmbird_common_show(struct seq_file *m, void *v);
++static int hmbird_common_open(struct inode *inode, struct file *file);
++
++#endif
+diff --git a/kernel/sched/hmbird_sched_proc_main.c b/kernel/sched/hmbird_sched_proc_main.c
+new file mode 100644
+index 0000000..e2a3b24
+--- /dev/null
++++ b/kernel/sched/hmbird_sched_proc_main.c
+@@ ... @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Copyright (C) 2024 Oplus. All rights reserved.
++ */
++
++#include <linux/module.h>
++#include <linux/proc_fs.h>
++#include <linux/seq_file.h>
++#include <linux/uaccess.h>
++#include <linux/slab.h>
++#include <linux/cpufreq.h>
++#include "hmbird_sched_proc.h"
++
++#define HMBIRD_SCHED_PROC_DIR "hmbird_sched"
++#define SLIM_FREQ_GOV_DIR       "slim_freq_gov"
++#define LOAD_TRACK_DIR          "slim_walt"
++#define HMBIRD_PROC_PERMISSION  0666
++
++int scx_enable;
++int partial_enable;
++int cpuctrl_high_ratio = 55;
++int cpuctrl_low_ratio = 40;
++int slim_stats;
++int hmbirdcore_debug = 0;
++int slim_for_app;
++int misfit_ds = 90;
++unsigned int highres_tick_ctrl;
++unsigned int highres_tick_ctrl_dbg;
++int cpu7_tl = 70;
++int slim_walt_ctrl;
++int slim_walt_dump;
++int slim_walt_policy;
++int slim_gov_debug;
++int scx_gov_ctrl = 1;
++int sched_ravg_window_frame_per_sec = 125;
++int parctrl_high_ratio = 55;
++int parctrl_low_ratio = 40;
++int parctrl_high_ratio_l = 65;
++int parctrl_low_ratio_l = 50;
++int isoctrl_high_ratio = 75;
++int isoctrl_low_ratio = 60;
++int isolate_ctrl;
++int iso_free_rescue;
++int heartbeat;
++int heartbeat_enable;
++int watchdog_enable;
++int save_gov;
++unsigned int cpu_cluster_masks;
++
++char saved_gov[NR_CPUS][16];
++
++static int set_proc_buf_val(struct file *file, const char __user *buf, size_t count, int *val)
++{
++	char kbuf[5] = {0};
++	int err;
++
++	if (count >= 5)
++		return -EFAULT;
++
++	if (copy_from_user(kbuf, buf, count)) {
++		pr_err("hmbird_sched : Failed to copy_from_user\n");
++		return -EFAULT;
++	}
++
++	err = kstrtoint(strstrip(kbuf), 0, val);
++	if (err < 0) {
++		pr_err("hmbird_sched: Failed to exec kstrtoint\n");
++		return -E
