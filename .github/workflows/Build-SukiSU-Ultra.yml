@@ -131,16 +131,6 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-
 
-      - name: Selected Input Parameters (Debug)
-        run: |
-          echo "Selected CPU: ${{ github.event.inputs.CPU }}"
-          echo "Selected FEIL: ${{ github.event.inputs.FEIL }}"
-          echo "Selected CPUD: ${{ github.event.inputs.CPUD }}"
-          echo "Selected ANDROID_VERSION: ${{ github.event.inputs.ANDROID_VERSION }}"
-          echo "Selected KERNEL_VERSION: ${{ github.event.inputs.KERNEL_VERSION }}"
-          echo "Selected BUILD_METHOD: ${{ github.event.inputs.BUILD_METHOD }}"
-          echo "Selected ZRAM: ${{ github.event.inputs.ZRAM }}"
-
       - name: Configure Git
         run: |
           git config --global user.name "FurLC"
@@ -180,57 +170,54 @@ jobs:
           export KSU_VERSION=$KSU_VERSION
           sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
 
-      - name: Set up susfs
+      - name: Set up susfs & apply patches
         run: |
+          set -e
           cd kernel_workspace
-          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
-          git clone https://github.com/WildKernels/kernel_patches.git
-          git clone https://github.com/SukiSU-Ultra/SukiSU_patch.git
-
-          #susfs
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
+          git clone --depth=1 https://github.com/SukiSU-Ultra/SukiSU_patch.git
+          git clone --depth=1 https://github.com/egcd123/boot.git
           cd kernel_platform
-          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
-          cp ../kernel_patches/next/syscall_hooks.patch ./common/
-          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
-          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
-          
-          #lz4k
-          if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
-            cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux
-            cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib
-            cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./common/crypto
-            cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./common/lib/
-          fi
-          
-          # Apply patches
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/ || true
+          mkdir -p ./common/fs ./common/include/linux ./common/lib ./common/crypto
+          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/ || true
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/ || true
+          cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux || true
+          cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib || true
+          cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./common/crypto || true
+          cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./common/lib/ || true
+          cp ../boot/1.patch ./common/
           cd ./common
-          patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
-          cp ../../kernel_patches/69_hide_stuff.patch ./
-          patch -p1 -F 3 < 69_hide_stuff.patch
-          patch -p1 -F 3 < syscall_hooks.patch
-
-          # Apply lz4k
-          if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
-            cp ../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./
-            patch -p1 -F 3 < lz4kd.patch || true
-            cp ../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4k_oplus.patch ./
-            patch -p1 -F 3 < lz4k_oplus.patch || true
+          PATCH_FILE=50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch
+          if [[ -f "$PATCH_FILE" ]]; then
+            sed -i 's/-32,12 +32,38/-32,11 +32,37/g' "$PATCH_FILE"
+            sed -i '/#include <trace\/hooks\/fs.h>/d' "$PATCH_FILE"
+            patch -p1 < "$PATCH_FILE" || true
           fi
-          echo "完成"
+          cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
+          patch -p1 -F 3 < syscall_hooks.patch || true
+          patch -p1 -F 3 < 1.patch
+          echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
+
+      - name: Apply lz4kd Patches
+        run: |
+          set -e
+          cd kernel_workspace/kernel_platform/common
+          PATCH_FILE=../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch
+          if [[ -f "$PATCH_FILE" ]]; then
+            cp "$PATCH_FILE" ./lz4kd.patch
+            patch -p1 -F 3 < lz4kd.patch || true
+          else
+            echo "❗ lz4kd patch not found for kernel version ${{ github.event.inputs.KERNEL_VERSION }}"
+          fi
 
       - name: Add SUSFS Configuration Settings
         run: |
           cd kernel_workspace/kernel_platform
-          
-          # Add KSU configuration settings
           echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
-          
-          # Add VFS configuration settings
           echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig      
-          
-          # Add SUSFS configuration settings
           echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -246,8 +233,6 @@ jobs:
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
-
-          # Add ZRAM
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
             echo "CONFIG_ZSMALLOC=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_CRYPTO_LZ4HC=y" >> ./common/arch/arm64/configs/gki_defconfig
@@ -257,9 +242,16 @@ jobs:
             echo "CONFIG_CRYPTO_LZ4K_OPLUS=y" >> ./common/arch/arm64/configs/gki_defconfig
             echo "CONFIG_ZRAM_WRITEBACK=y" >> ./common/arch/arm64/configs/gki_defconfig
           fi
-          
-          # Remove check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
+
+      - name: Add sched_ext
+        run: |
+          cd kernel_workspace/kernel_platform/
+          git clone https://github.com/egcd123/sched_ext.git
+          cp -r ./sched_ext/* ./common/kernel/sched
+          rm -rf ./sched_ext/.git
+          cd common/kernel/sched
+          sed -i.bak '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
 
       - name: Build kernel
         run: |
@@ -267,7 +259,10 @@ jobs:
           cd kernel_workspace/kernel_platform/common
           if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
             export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
-            make -j$(nproc) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole O=out
+            # 先生成 .config
+            make LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out gki_defconfig
+            # 编译全部目标
+            make -j$(nproc) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole O=out all
           else
             cd $GITHUB_WORKSPACE/kernel_workspace
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
@@ -328,82 +323,21 @@ jobs:
           cp Image $GITHUB_WORKSPACE/AnyKernel3-kpm/Image
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
 
-      - name: Find zram.ko & crypto_zstdn.ko (Debug)
-        if: ${{ github.event.inputs.ZRAM == 'true' }}
-        run: |
-          find -name zram.ko
-          find -name crypto_zstdn.ko
-
-      - name: Locate zram.ko
-        if: ${{ github.event.inputs.ZRAM == 'true' }}
-        run: |
-          sudo apt install -y unzip
-          curl -s https://api.github.com/repos/FurLC/ZRAM-Module/releases/latest | grep "browser_download_url" | grep "ZRAM-Module-.*\.zip" | cut -d '"' -f 4 | xargs wget -N
-          unzip "$(ls -t ZRAM-Module-*.zip | head -1)" -d ZRAM-Module
-
-          zram1="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
-          zram2="./kernel_workspace/kernel_platform/out/dist/"
-          zram3="./kernel_workspace/kernel_platform/out/vendor/oplus/kernel/mm/"
-          zram4="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/vendor_dlkm/"
-          zram5="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/system_dlkm/flatten/lib/modules/"
-          zram6="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/"
-          zram7="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_bsp_hybridswap_zram/"
-          target="./ZRAM-Module/zram/zram.ko"
-
-          for dir in "$zram1" "$zram2" "$zram3" "$zram4" "$zram5" "$zram6" "$zram7"; do
-            zram_path=$(find "$dir" -name "zram.ko" | head -n 1)
-            [ -n "$zram_path" ] && break
-          done
-
-          if [ -z "$zram_path" ]; then
-            zram_path=$(find "./kernel_workspace" -name "zram.ko" | head -n 1)
-          fi
-
-          if [ -n "$zram_path" ] && [ -f "$zram_path" ]; then
-            echo "ZRAM module file located at: $zram_path"
-            mkdir -p "$(dirname "$target")"
-            if [ "$(realpath "$zram_path")" != "$(realpath "$target")" ]; then
-              cp "$zram_path" "$target"
-            else
-              echo "源文件与目标相同，跳过复制"
-            fi
-          else
-            echo "未找到 zram.ko 文件，构建可能失败"
-            exit 1
-          fi
-
-      - name: Set suffix
-        id: suffix
-        run: |
-          if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
-            echo "value=ZRAM" >> $GITHUB_OUTPUT
-          else
-            echo "value=" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Remove _uv suffix from FEIL
-        id: feil_clean
-        run: |
-          clean_feil="${{ github.event.inputs.FEIL }}"
-          clean_feil="${clean_feil%_v}"  # 去掉结尾的 _v（如果有）
-          clean_feil="${clean_feil%_u}"  # 去掉结尾的 _u（如果有）
-          echo "value=$clean_feil" >> $GITHUB_OUTPUT
-
       - name: Upload AnyKernel3 (no_KPM)
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_NoKPM_${{ steps.suffix.outputs.value }}
+          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}_NoKPM
           path: AnyKernel3-no_kpm/*
 
       - name: Upload AnyKernel3 (KPM)
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_KPM_${{ steps.suffix.outputs.value }}
+          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}_KPM
           path: AnyKernel3-kpm/*
 
       - name: Upload ZRAM-Module
         if: ${{ github.event.inputs.ZRAM == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ZRAM-Module_${{ github.event.inputs.KERNEL_VERSION }}_${{ steps.feil_clean.outputs.value }}
+          name: ZRAM-Module_${{ github.event.inputs.KERNEL_VERSION }}_${{ github.event.inputs.FEIL }}
           path: ZRAM-Module/*
