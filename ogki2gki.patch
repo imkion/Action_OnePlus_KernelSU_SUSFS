@@ -1,70 +1,82 @@
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/of.h>
-#include <linux/string.h>
-
-static int __init hmbird_patch_init(void)
-{
-    struct device_node *np;
-    const char *type;
-    static const char *new_type = "HMBIRD_GKI";
-    int ret;
-
-    np = of_find_node_by_path("/soc/oplus,hmbird/version_type");
-    if (!np) {
-        pr_info("hmbird_patch: node not found\n");
-        return 0;
-    }
-
-    ret = of_property_read_string(np, "type", &type);
-    if (ret) {
-        pr_info("hmbird_patch: type property not found\n");
-        of_node_put(np);
-        return 0;
-    }
-
-    pr_info("hmbird_patch: old type: %s\n", type);
-
-    if (strcmp(type, "HMBIRD_OGKI") == 0) {
-#if defined(CONFIG_OF_DYNAMIC) && defined(CONFIG_OF)
-        struct property *prop = of_find_property(np, "type", NULL);
-        if (prop) {
-            // Remove old property
-            if (of_remove_property(np, prop) == 0) {
-                // Add new property
-                struct property *new_prop = kzalloc(sizeof(*new_prop), GFP_KERNEL);
-                if (new_prop) {
-                    new_prop->name = "type";
-                    new_prop->length = strlen(new_type) + 1;
-                    new_prop->value = kstrdup(new_type, GFP_KERNEL);
-                    if (new_prop->value) {
-                        if (of_add_property(np, new_prop) == 0)
-                            pr_info("hmbird_patch: type changed to %s\n", new_type);
-                        else
-                            pr_info("hmbird_patch: of_add_property failed\n");
-                    } else {
-                        pr_info("hmbird_patch: kstrdup for new_prop->value failed\n");
-                        kfree(new_prop);
-                    }
-                } else {
-                    pr_info("hmbird_patch: kzalloc for new_prop failed\n");
-                }
-            } else {
-                pr_info("hmbird_patch: of_remove_property failed\n");
-            }
-        } else {
-            pr_info("hmbird_patch: property struct not found\n");
-        }
-#else
-        pr_info("hmbird_patch: kernel does not support dynamic DT modifications\n");
-#endif
-    }
-
-    of_node_put(np);
-    return 0;
-}
-early_initcall(hmbird_patch_init);
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("reigadegr (优化 by Copilot Chat)");
-MODULE_DESCRIPTION("Forcefully convert HMBIRD_OGKI to HMBIRD_GKI (optimized version)");
+diff --git a/drivers/Makefile b/drivers/Makefile
+index e5c0c4a..abcd123 100644
+--- a/drivers/Makefile
++++ b/drivers/Makefile
+@@ -1,0 +1,2 @@
++obj-y += hmbird_patch.o
++
+diff --git a/drivers/hmbird_patch.c b/drivers/hmbird_patch.c
+new file mode 100644
+index 0000000..b1d3e2a
+--- /dev/null
++++ b/drivers/hmbird_patch.c
+@@ -0,0 +1,48 @@
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/of.h>
++#include <linux/string.h>
++#include <linux/slab.h>
++
++static int __init hmbird_patch_init(void)
++{
++    struct device_node *np;
++    const char *type;
++    static const char *new_type = "HMBIRD_GKI";
++    int ret;
++
++    np = of_find_node_by_path("/soc/oplus,hmbird/version_type");
++    if (!np) {
++        pr_info("hmbird_patch: node not found\n");
++        return 0;
++    }
++
++    ret = of_property_read_string(np, "type", &type);
++    if (ret) {
++        pr_info("hmbird_patch: type property not found\n");
++        of_node_put(np);
++        return 0;
++    }
++
++    pr_info("hmbird_patch: old type: %s\n", type);
++
++    if (strcmp(type, "HMBIRD_OGKI") == 0) {
++#if defined(CONFIG_OF_DYNAMIC) && defined(CONFIG_OF)
++        struct property *prop = of_find_property(np, "type", NULL);
++        if (prop) {
++            if (of_remove_property(np, prop) == 0) {
++                struct property *new_prop = kzalloc(sizeof(*new_prop), GFP_KERNEL);
++                if (new_prop) {
++                    new_prop->name = "type";
++                    new_prop->length = strlen(new_type) + 1;
++                    new_prop->value = kstrdup(new_type, GFP_KERNEL);
++                    if (new_prop->value) {
++                        if (of_add_property(np, new_prop) == 0)
++                            pr_info("hmbird_patch: type changed to %s\n", new_type);
++                        else
++                            pr_info("hmbird_patch: of_add_property failed\n");
++                    } else {
++                        pr_info("hmbird_patch: kstrdup for new_prop->value failed\n");
++                        kfree(new_prop);
++                    }
++                } else {
++                    pr_info("hmbird_patch: kzalloc for new_prop failed\n");
++                }
++            } else {
++                pr_info("hmbird_patch: of_remove_property failed\n");
++            }
++        } else {
++            pr_info("hmbird_patch: property struct not found\n");
++        }
++#else
++        pr_info("hmbird_patch: kernel does not support dynamic DT modifications\n");
++#endif
++    }
++
++    of_node_put(np);
++    return 0;
++}
++early_initcall(hmbird_patch_init);
++
++MODULE_LICENSE("GPL");
++MODULE_AUTHOR("reigadegr (优化 by FurLC)");
++MODULE_DESCRIPTION("Forcefully convert HMBIRD_OGKI to HMBIRD_GKI (optimized version)");
