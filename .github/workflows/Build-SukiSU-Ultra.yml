@@ -243,10 +243,8 @@ jobs:
 
           if [ -f common/kernel/sched/build_policy.c ]; then
             echo "检测到 build_policy.c，应用结构patch"
-            # 确保此时就在 kernel_workspace/kernel_platform 目录下！
             wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
-            head -10 enable_scx.patch
-            file enable_scx.patch
+            sed -i 's/\r$//' enable_scx.patch
             patch -p1 --batch --forward < enable_scx.patch
           elif [ -f common/kernel/sched/core.c ]; then
             echo "未检测到 build_policy.c，自动fallback到 core.c"
@@ -266,8 +264,7 @@ jobs:
             fi
             cd ../../../../../..
             wget -O enable_scx_struct_core.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
-            head -10 enable_scx_struct_core.patch
-            file enable_scx_struct_core.patch
+            sed -i 's/\r$//' enable_scx_struct_core.patch
             patch -p1 --batch --forward < enable_scx_struct_core.patch || true
           else
             echo "❌ 未检测到 build_policy.c 或 core.c，请检查目录结构"
