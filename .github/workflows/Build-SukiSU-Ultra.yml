@@ -84,7 +84,7 @@ on:
         description: "是否启用SCX调速器"
         type: boolean
         required: true
-        default: true
+        default: false
 
 jobs:
   build:
