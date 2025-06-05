@@ -179,8 +179,8 @@ jobs:
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git \
             -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone --depth=1 https://github.com/SukiSU-Ultra/SukiSU_patch.git
-          # wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki.patch
-          # wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki_c99fix.patch
+          wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki.patch
+          wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki_c99fix.patch
 
           cd kernel_platform
           PATCHDIR="../susfs4ksu/kernel_patches"
@@ -197,8 +197,8 @@ jobs:
             cp -r $SUKIPATCH/other/zram/lz4k/crypto/* $COMMON/crypto/ 2>/dev/null || true
             cp -r $SUKIPATCH/other/zram/lz4k_oplus $COMMON/lib/ 2>/dev/null || true
           fi
-          # cp ../ogki2gki.patch $COMMON/
-          # cp ../ogki2gki_c99fix.patch $COMMON/
+          cp ../ogki2gki.patch $COMMON/
+          cp ../ogki2gki_c99fix.patch $COMMON/
 
           cd $COMMON
           SUSFS_PATCH="50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch"
@@ -210,7 +210,7 @@ jobs:
 
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           patch -p1 -F 3 < syscall_hooks.patch || true
-          # patch -p1 -F 3 < ogki2gki_c99fix.patch
+          patch -p1 -F 3 < ogki2gki_c99fix.patch
           echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
 
       - name: 应用zram相关补丁
@@ -315,6 +315,21 @@ jobs:
 
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
+      - name: 编译前强制注入SCX到最终 .config（仅5.10/5.15，SCX选项打开时，带缩进）
+        if: ${{ (github.event.inputs.KERNEL_VERSION == '5.10' || github.event.inputs.KERNEL_VERSION == '5.15') && github.event.inputs.SCX == 'true' }}
+        run: |
+          for file in $(find kernel_workspace/kernel_platform -type f -name "build.sh"); do
+            grep -q "SCX patch start" "$file" && continue
+            sed -i '/echo " Building kernel"/i\
+    # ==== SCX patch start ====\
+    if [ -f "${OUT_DIR}/.config" ]; then\
+        grep -q "^CONFIG_SCHED_CLASS_EXT=y" "${OUT_DIR}/.config" || echo "CONFIG_SCHED_CLASS_EXT=y" >> "${OUT_DIR}/.config";\
+        (cd ${OUT_DIR} && make O=${OUT_DIR} olddefconfig);\
+    fi\
+    # ==== SCX patch end ====' "$file"
+            echo "已patch: $file"
+          done
+
       - name: 编译内核
         run: |
           set -e
@@ -329,7 +344,6 @@ jobs:
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
           fi
 
-      # 自动查找Image/.config/out根
       - name: "[DEBUG] 自动查找Image路径等"
         id: image_path
         run: |
@@ -340,11 +354,9 @@ jobs:
           fi
           echo "IMAGE=$IMAGE" >> $GITHUB_ENV
           echo "IMAGE=$IMAGE" >> $GITHUB_OUTPUT
-          # 查找 .config（同 Image 目录或往上两层找）
           CONFIG=$(find "$(dirname "$IMAGE")" -maxdepth 2 -name ".config" | head -n 1)
           echo "CONFIG=$CONFIG" >> $GITHUB_ENV
           echo "CONFIG=$CONFIG" >> $GITHUB_OUTPUT
-          # out 根目录
           OUTROOT=$(echo "$IMAGE" | sed 's|/gki_kernel/.*||')
           echo "OUTROOT=$OUTROOT" >> $GITHUB_ENV
           echo "OUTROOT=$OUTROOT" >> $GITHUB_OUTPUT
