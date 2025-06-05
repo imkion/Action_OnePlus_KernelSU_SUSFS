@@ -1,7 +1,4 @@
-diff --git a/kernel/sched/Kconfig b/kernel/sched/Kconfig
-index e69de29..a1b2c3d 100644
---- a/kernel/sched/Kconfig
-+++ b/kernel/sched/Kconfig
+diff --git a/common/kernel/sched/Kconfig b/common/kernel/sched/Kconfig
 @@ ... @@
 +config SCHED_CLASS_EXT
 +    bool "Enable sched_ext support"
@@ -14,125 +11,16 @@ index e69de29..a1b2c3d 100644
 +    default n
 +    help
 +      Enable slim_sched 相关调度接口与调优参数。
-diff --git a/kernel/sched/Makefile b/kernel/sched/Makefile
-index e69de29..e1b2c3d 100644
---- a/kernel/sched/Makefile
-+++ b/kernel/sched/Makefile
+diff --git a/common/kernel/sched/Makefile b/common/kernel/sched/Makefile
 @@ ... @@
 +obj-$(CONFIG_SCHED_CLASS_EXT) += ext.o scx_main.o hmbird_sched_proc_main.o
-diff --git a/kernel/sched/core.c b/kernel/sched/core.c
+diff --git a/common/kernel/sched/build_policy.c b/common/kernel/sched/build_policy.c
 @@ ... @@
 +#ifdef CONFIG_SCHED_CLASS_EXT
 +# include "ext.c"
 +# include "hmbird_sched_proc_main.c"
 +#endif
-+ 
++
 +#ifdef CONFIG_SLIM_SCHED
 +# include "slim_sysctl.c"
-+#endif
-+
-diff --git a/kernel/sched/ext.c b/kernel/sched/ext.c
-new file mode 100644
-index 0000000..b1e2c34
---- /dev/null
-+++ b/kernel/sched/ext.c
-@@ ... @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2024 Oplus. All rights reserved.
-+ * Example stub for ext.c. Please fill with actual logic!
-+ */
-+#include <linux/module.h>
-+#include <linux/kernel.h>
-+
-+void ext_sched_logic(void)
-+{
-+    pr_info("EXT sched logic placeholder\n");
-+}
-diff --git a/kernel/sched/scx_main.c b/kernel/sched/scx_main.c
-new file mode 100644
-index 0000000..c1f2e34
---- /dev/null
-+++ b/kernel/sched/scx_main.c
-@@ ... @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2024 Oplus. All rights reserved.
-+ * Example stub for scx_main.c. Please fill with actual logic!
-+ */
-+#include <linux/module.h>
-+#include <linux/kernel.h>
-+
-+void scx_do_something(void)
-+{
-+    pr_info("SCX logic placeholder\n");
-+}
-diff --git a/kernel/sched/hmbird_sched_proc_main.c b/kernel/sched/hmbird_sched_proc_main.c
-new file mode 100644
-index 0000000..e2a3b24
---- /dev/null
-+++ b/kernel/sched/hmbird_sched_proc_main.c
-@@ ... @@
-+// SPDX-License-Identifier: GPL-2.0-only
-+/*
-+ * Copyright (C) 2024 Oplus. All rights reserved.
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/proc_fs.h>
-+#include <linux/seq_file.h>
-+#include <linux/uaccess.h>
-+#include <linux/slab.h>
-+#include <linux/cpufreq.h>
-+#include "hmbird_sched_proc.h"
-+
-+// 仅示例，具体变量和逻辑可根据SCX实际补丁完善
-+int scx_enable;
-+
-+static int hmbird_common_show(struct seq_file *m, void *v) { return 0; }
-+static int hmbird_common_open(struct inode *inode, struct file *file) { return 0; }
-+static ssize_t hmbird_common_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos) { return count; }
-diff --git a/kernel/sched/hmbird_sched_proc.h b/kernel/sched/hmbird_sched_proc.h
-new file mode 100644
-index 0000000..f1e2d45
---- /dev/null
-+++ b/kernel/sched/hmbird_sched_proc.h
-@@ ... @@
-+#ifndef __HMBIRD_SCHED_PROC_H__
-+#define __HMBIRD_SCHED_PROC_H__
-+
-+#include <linux/proc_fs.h>
-+#include <linux/seq_file.h>
-+
-+#define HMBIRD_CREATE_PROC_ENTRY(name, mode, parent, proc_ops) \
-+	do { \
-+		if (!proc_create(name, mode, parent, proc_ops)) { \
-+			pr_err("Error creating proc entry %s\n", name); \
-+			return -ENOMEM; \
-+		} \
-+	} while (0)
-+
-+#define HMBIRD_CREATE_PROC_ENTRY_DATA(name, mode, parent, proc_ops, data) \
-+	do { \
-+		if (!proc_create_data(name, mode, parent, proc_ops, data)) { \
-+			pr_err("Error creating proc entry with data %s\n", name); \
-+			return -ENOMEM; \
-+		} \
-+	} while (0)
-+
-+#define HMBIRD_PROC_OPS(name, open_func, write_func) \
-+	static const struct proc_ops name##_proc_ops = { \
-+		.proc_open = open_func, \
-+		.proc_write = write_func, \
-+		.proc_read = seq_read, \
-+		.proc_lseek = seq_lseek, \
-+		.proc_release = single_release, \
-+	}
-+
-+static ssize_t hmbird_common_write(struct file *file, \
-+				   const char __user *buf, \
-+				   size_t count, loff_t *ppos);
-+static int hmbird_common_show(struct seq_file *m, void *v);
-+static int hmbird_common_open(struct inode *inode, struct file *file);
-+
 +#endif
