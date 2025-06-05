@@ -237,18 +237,24 @@ jobs:
         run: |
           set -e
           cd kernel_workspace/kernel_platform/
+          echo "当前目录: $(pwd)"
+          ls -l
+          ls -l common/kernel/sched/
           git clone --depth=1 https://github.com/HanKuCha/sched_ext.git
           cp -r ./sched_ext/* ./common/kernel/sched/
           rm -rf ./sched_ext
 
+          wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
+          sed -i 's/\r$//' enable_scx.patch
+          head -10 enable_scx.patch
+          file enable_scx.patch
+
           if [ -f common/kernel/sched/build_policy.c ]; then
             echo "检测到 build_policy.c，应用结构patch"
-            wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
-            sed -i 's/\r$//' enable_scx.patch
             patch -p1 --batch --forward < enable_scx.patch
           elif [ -f common/kernel/sched/core.c ]; then
             echo "未检测到 build_policy.c，自动fallback到 core.c"
-            cd kernel_workspace/kernel_platform/common/kernel/sched
+            cd common/kernel/sched
             if ! grep -q 'SCHED_EXT GLUE BEGIN' core.c; then
               echo "" >> core.c
               echo "/* ====== SCHED_EXT GLUE BEGIN (auto-injected by workflow) ====== */" >> core.c
@@ -262,10 +268,8 @@ jobs:
               echo "#endif" >> core.c
               echo "/* ====== SCHED_EXT GLUE END ====== */" >> core.c
             fi
-            cd ../../../../../..
-            wget -O enable_scx_struct_core.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
-            sed -i 's/\r$//' enable_scx_struct_core.patch
-            patch -p1 --batch --forward < enable_scx_struct_core.patch || true
+            cd ../../../../
+            patch -p1 --batch --forward < enable_scx.patch || true
           else
             echo "❌ 未检测到 build_policy.c 或 core.c，请检查目录结构"
             exit 1
