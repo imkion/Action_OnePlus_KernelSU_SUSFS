@@ -285,12 +285,6 @@ jobs:
             make LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out gki_defconfig
             yes "" | make ARCH=arm64 O=out olddefconfig
             make -j2 LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out all
-          elif [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "5.10" || "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
-            cd kernel_workspace/kernel_platform/common
-            export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r450784d/bin:/usr/lib/ccache:$PATH"
-            make LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out gki_defconfig
-            yes "" | make ARCH=arm64 O=out olddefconfig
-            make -j2 LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out all
           else
             cd kernel_workspace
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
