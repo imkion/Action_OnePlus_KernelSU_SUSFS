@@ -1,0 +1,61 @@
+name: Extract oplus_build_kernel.sh and called scripts from repo workspace
+
+on:
+  workflow_dispatch:
+
+jobs:
+  extract_oplus_build_kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 安装repo工具
+        run: |
+          curl --retry 3 https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
+          chmod a+x ~/repo
+          sudo mv ~/repo /usr/local/bin/repo
+
+      - name: 初始化repo并同步源码
+        run: |
+          mkdir -p kernel_workspace
+          cd kernel_workspace
+          # 你可以根据实际manifest参数调整
+          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
+            -b refs/heads/oneplus/sm8550 \
+            -m oneplus_ace3_v.xml --depth=1
+          repo sync --force-sync --no-tags --no-clone-bundle -j$(nproc)
+
+      - name: 查找并输出 oplus_build_kernel.sh 及其调用脚本
+        run: |
+          cd kernel_workspace
+          file_path=$(find . -type f -name "oplus_build_kernel.sh" | head -n 1)
+          if [[ -z "$file_path" ]]; then
+            echo "::error::未找到 oplus_build_kernel.sh"
+            exit 1
+          fi
+          echo "主脚本路径: $file_path"
+          mkdir -p ../extracted_script
+          cp "$file_path" ../extracted_script/
+
+          # 递归查找被调用的关键脚本
+          # 提取 source/./相对路径/绝对路径等
+          called_scripts=$(grep -oE 'source +[./a-zA-Z0-9_/.-]+' "$file_path" | awk '{print $2}' | sort | uniq)
+          for script in $called_scripts; do
+            real_script=$(find . -type f -name "$(basename "$script")" | head -n 1)
+            if [[ -n "$real_script" ]]; then
+              echo "发现被调用脚本: $real_script"
+              cp "$real_script" ../extracted_script/
+            fi
+          done
+
+          # 展示所有提取出的脚本内容
+          echo "==== 脚本内容预览 ===="
+          for sc in ../extracted_script/*.sh; do
+            echo "------ $sc ------"
+            cat "$sc"
+            echo
+          done
+
+      - name: 上传所有提取脚本
+        uses: actions/upload-artifact@v4
+        with:
+          name: oplus_kernel_build_scripts
+          path: extracted_script/*.sh
