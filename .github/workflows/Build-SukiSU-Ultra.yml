@@ -263,8 +263,8 @@ jobs:
               echo "/* ====== SCHED_EXT GLUE END ====== */" >> core.c
             fi
             cd ../../../../../..
-            wget -O enable_scx_struct_core.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx_struct_core.patch
-            patch -p1 --batch --forward < enable_scx_struct_core.patch || true
+            wget -O enable_scx_struct_core.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
+            patch -p1 --batch --forward < enable_scx.patch || true
           else
             echo "❌ 未检测到 build_policy.c 或 core.c，请检查目录结构"
             exit 1
