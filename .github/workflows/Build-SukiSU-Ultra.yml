@@ -237,6 +237,17 @@ jobs:
             fi
           done
 
+      - name: 下载并应用SCX补丁
+        if: ${{ github.event.inputs.SCX == 'true' }}
+        run: |
+          cd kernel_workspace/kernel_platform/
+          git clone https://github.com/HanKuCha/sched_ext.git
+          cp -r ./sched_ext/* ./common/kernel/sched
+          rm -rf ./sched_ext/.git
+          cd common/kernel/sched/
+          wget -O enable_scx.patch "https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch"
+          patch -p1 < enable_scx.patch
+
       - name: 写入SUSFS、ZRAM内核配置
         run: |
           cd kernel_workspace/kernel_platform
