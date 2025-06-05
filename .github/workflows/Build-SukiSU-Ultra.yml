@@ -368,6 +368,25 @@ jobs:
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
           fi
 
+      - name: "[DEBUG] 编译后查找 .config、SCX对象等"
+        run: |
+          echo "==== [DEBUG] 查找所有 .config 文件 ===="
+          find kernel_workspace -type f -name ".config" | tee all_config_paths.txt
+
+          echo "==== [DEBUG] .config 主要内容 ===="
+          for cfile in $(cat all_config_paths.txt); do
+            echo "---- $cfile ----"
+            tail -n 20 "$cfile"
+            grep CONFIG_SCHED_CLASS_EXT "$cfile" || echo "没有SCHED_CLASS_EXT"
+          done
+
+          echo "==== [DEBUG] out 目录结构（3层） ===="
+          tree -L 3 kernel_workspace/kernel_platform/out || true
+
+          echo "==== [DEBUG] SCX对象文件 ===="
+          find kernel_workspace/kernel_platform/out -name "hmbird_sched_proc_main.o" || echo "无hmbird_sched_proc_main.o"
+          find kernel_workspace/kernel_platform/out -name "slim_sysctl.o" || echo "无slim_sysctl.o"
+
       - name: "[DEBUG] 自动查找Image路径等"
         id: image_path
         run: |
