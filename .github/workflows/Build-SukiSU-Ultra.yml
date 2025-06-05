@@ -320,13 +320,12 @@ jobs:
         run: |
           for file in $(find kernel_workspace/kernel_platform -type f -name "build.sh"); do
             grep -q "SCX patch start" "$file" && continue
-            sed -i '/echo " Building kernel"/i\
-    # ==== SCX patch start ====\
-    if [ -f "${OUT_DIR}/.config" ]; then\
-        grep -q "^CONFIG_SCHED_CLASS_EXT=y" "${OUT_DIR}/.config" || echo "CONFIG_SCHED_CLASS_EXT=y" >> "${OUT_DIR}/.config";\
-        (cd ${OUT_DIR} && make O=${OUT_DIR} olddefconfig);\
-    fi\
-    # ==== SCX patch end ====' "$file"
+            sed -i '/echo " Building kernel"/i\# ==== SCX patch start ====' "$file"
+            sed -i '/echo " Building kernel"/i\if [ -f "${OUT_DIR}/.config" ]; then' "$file"
+            sed -i '/echo " Building kernel"/i\    grep -q "^CONFIG_SCHED_CLASS_EXT=y" "${OUT_DIR}/.config" || echo "CONFIG_SCHED_CLASS_EXT=y" >> "${OUT_DIR}/.config"' "$file"
+            sed -i '/echo " Building kernel"/i\    (cd ${OUT_DIR} && make O=${OUT_DIR} olddefconfig)' "$file"
+            sed -i '/echo " Building kernel"/i\fi' "$file"
+            sed -i '/echo " Building kernel"/i\# ==== SCX patch end ====' "$file"
             echo "已patch: $file"
           done
 
