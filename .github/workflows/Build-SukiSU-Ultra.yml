@@ -179,8 +179,8 @@ jobs:
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git \
             -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone --depth=1 https://github.com/SukiSU-Ultra/SukiSU_patch.git
-          wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki.patch
-          wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki_c99fix.patch
+          # wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki.patch
+          # wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki_c99fix.patch
 
           cd kernel_platform
           PATCHDIR="../susfs4ksu/kernel_patches"
@@ -197,8 +197,8 @@ jobs:
             cp -r $SUKIPATCH/other/zram/lz4k/crypto/* $COMMON/crypto/ 2>/dev/null || true
             cp -r $SUKIPATCH/other/zram/lz4k_oplus $COMMON/lib/ 2>/dev/null || true
           fi
-          cp ../ogki2gki.patch $COMMON/
-          cp ../ogki2gki_c99fix.patch $COMMON/
+          # cp ../ogki2gki.patch $COMMON/
+          # cp ../ogki2gki_c99fix.patch $COMMON/
 
           cd $COMMON
           SUSFS_PATCH="50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch"
@@ -210,7 +210,7 @@ jobs:
 
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           patch -p1 -F 3 < syscall_hooks.patch || true
-          patch -p1 -F 3 < ogki2gki_c99fix.patch
+          # patch -p1 -F 3 < ogki2gki_c99fix.patch
           echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
 
       - name: 应用zram相关补丁
