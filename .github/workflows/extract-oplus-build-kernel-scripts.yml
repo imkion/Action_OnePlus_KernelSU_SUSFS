@@ -35,15 +35,36 @@ jobs:
           mkdir -p ../extracted_script
           cp "$file_path" ../extracted_script/
 
-          # 递归查找被调用的关键脚本
-          # 提取 source/./相对路径/绝对路径等
-          called_scripts=$(grep -oE 'source +[./a-zA-Z0-9_/.-]+' "$file_path" | awk '{print $2}' | sort | uniq)
-          for script in $called_scripts; do
-            real_script=$(find . -type f -name "$(basename "$script")" | head -n 1)
-            if [[ -n "$real_script" ]]; then
-              echo "发现被调用脚本: $real_script"
-              cp "$real_script" ../extracted_script/
-            fi
+          # 用数组保存已处理脚本，避免重复
+          declare -a SCRIPT_QUEUE
+          declare -A SEEN
+
+          SCRIPT_QUEUE+=("$file_path")
+          SEEN["$file_path"]=1
+
+          while [ ${#SCRIPT_QUEUE[@]} -gt 0 ]; do
+            curr_script="${SCRIPT_QUEUE[0]}"
+            SCRIPT_QUEUE=("${SCRIPT_QUEUE[@]:1}")
+
+            # 查找source和直接调用的sh脚本
+            called=$(grep -oE '(source +[./a-zA-Z0-9_/.-]+|\.\/[./a-zA-Z0-9_/.-]+\.sh)' "$curr_script" | awk '{print $NF}' | sort | uniq)
+            for script in $called; do
+              # 去掉参数，只保留脚本路径部分
+              script_path="${script%% *}"
+              # 若是相对路径，补全
+              abs_path=$(dirname "$curr_script")/"$script_path"
+              abs_path=$(realpath "$abs_path" 2>/dev/null || echo "")
+              # 兼容部分绝对路径写法
+              if [[ ! -f "$abs_path" ]]; then
+                abs_path=$(find . -type f -name "$(basename "$script_path")" | head -n 1)
+              fi
+              if [[ -f "$abs_path" && -z "${SEEN["$abs_path"]}" ]]; then
+                echo "发现被调用脚本: $abs_path"
+                cp "$abs_path" ../extracted_script/
+                SCRIPT_QUEUE+=("$abs_path")
+                SEEN["$abs_path"]=1
+              fi
+            done
           done
 
           # 展示所有提取出的脚本内容
