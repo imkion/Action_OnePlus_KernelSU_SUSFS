@@ -244,7 +244,7 @@ jobs:
           cp -r ./sched_ext/* ./common/kernel/sched/
           rm -rf ./sched_ext
 
-          wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
+          wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
           sed -i 's/\r$//' enable_scx.patch
           head -10 enable_scx.patch
           file enable_scx.patch
