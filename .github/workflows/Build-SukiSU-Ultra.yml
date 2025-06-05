@@ -237,10 +237,18 @@ jobs:
           git clone --depth=1 https://github.com/egcd123/sched_ext.git
           cp -r ./sched_ext/* ./common/kernel/sched
           rm -rf ./sched_ext/.git
-          cd ./common/kernel/sched
-          # 2. 自动插入 include 语句（避免重复插入）
-          grep -q 'hmbird_sched_proc_main.c' build_policy.c || \
-            sed -i '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
+
+          # 2. 自动插入 include 语句（避免重复插入，判断 build_policy.c 是否存在）
+          BUILD_POLICY=./common/kernel/sched/build_policy.c
+          if [ -f "$BUILD_POLICY" ]; then
+            grep -q 'hmbird_sched_proc_main.c' "$BUILD_POLICY" || \
+              sed -i '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' "$BUILD_POLICY"
+          else
+            echo "❌ build_policy.c 不存在，请检查内核源码路径或适配对应内核！"
+            ls ./common/kernel/sched
+            exit 1
+          fi
+
           cd ../../..
           # 3. 只 patch 结构文件（Kconfig/Makefile/build_policy.c）
           wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx_struct.patch
