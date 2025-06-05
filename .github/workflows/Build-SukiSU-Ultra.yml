@@ -336,6 +336,24 @@ jobs:
           sed -i '/echo " Building kernel"/i\# ==== SCX patch end ====' "$target_file"
           echo "✅ 已patch: $target_file"
 
+      - name: "[DEBUG] 编译前关键路径和配置检查"
+        run: |
+          echo "==== [DEBUG] 查找所有 .config 文件 ===="
+          find kernel_workspace -type f -name ".config" | tee all_config_paths.txt
+
+          echo "==== [DEBUG] .config 主要内容 ===="
+          for cfile in $(cat all_config_paths.txt); do
+            echo "---- $cfile ----"
+            tail -n 20 "$cfile"
+            grep CONFIG_SCHED_CLASS_EXT "$cfile" || echo "没有SCHED_CLASS_EXT"
+          done
+
+          echo "==== [DEBUG] out 目录结构（3层） ===="
+          tree -L 3 kernel_workspace/kernel_platform/out || true
+
+          echo "==== [DEBUG] 当前build.sh patch片段 ===="
+          grep -A 10 "SCX patch start" kernel_workspace/kernel_platform/build/kernel/build.sh || true
+
       - name: 编译内核
         run: |
           set -e
