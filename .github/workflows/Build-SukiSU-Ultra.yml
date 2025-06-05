@@ -244,9 +244,21 @@ jobs:
           git clone https://github.com/HanKuCha/sched_ext.git
           cp -r ./sched_ext/* ./common/kernel/sched
           rm -rf ./sched_ext/.git
-          cd common/kernel/sched/
-          wget -O enable_scx.patch "https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch"
-          patch -p1 < enable_scx.patch
+          cd common/kernel/sched
+
+          if ! grep -q SCHED_CLASS_EXT Kconfig; then
+            echo "config SCHED_CLASS_EXT" >> Kconfig
+            echo "    bool \"Enable SchedExt (HanKuCha SCX)\"" >> Kconfig
+            echo "    default n" >> Kconfig
+            echo "    help" >> Kconfig
+            echo "      Enable the external SCX scheduler for advanced tuning." >> Kconfig
+          fi
+
+          grep -q hmbird_sched_proc_main.o Makefile || \
+            echo 'obj-$(CONFIG_SCHED_CLASS_EXT) += hmbird_sched_proc_main.o slim_sysctl.o' >> Makefile
+
+          DEFCONFIG=../../arch/arm64/configs/gki_defconfig
+          grep -q CONFIG_SCHED_CLASS_EXT "$DEFCONFIG" || echo 'CONFIG_SCHED_CLASS_EXT=y' >> "$DEFCONFIG"
 
       - name: 写入SUSFS、ZRAM内核配置
         run: |
