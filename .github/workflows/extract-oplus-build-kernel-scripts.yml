@@ -33,9 +33,9 @@ jobs:
           fi
           echo "主脚本路径: $file_path"
           mkdir -p ../extracted_script
-          cp "$file_path" ../extracted_script/
+          # 保留路径结构，防止同名脚本覆盖
+          cp --parents "$file_path" ../extracted_script/
 
-          # 用数组保存已处理脚本，避免重复
           declare -a SCRIPT_QUEUE
           declare -A SEEN
 
@@ -46,30 +46,27 @@ jobs:
             curr_script="${SCRIPT_QUEUE[0]}"
             SCRIPT_QUEUE=("${SCRIPT_QUEUE[@]:1}")
 
-            # 查找source和直接调用的sh脚本
-            called=$(grep -oE '(source +[./a-zA-Z0-9_/.-]+|\.\/[./a-zA-Z0-9_/.-]+\.sh)' "$curr_script" | awk '{print $NF}' | sort | uniq)
+            # 查找 source 和直接/间接调用的sh脚本
+            called=$(grep -oE '(source +[./a-zA-Z0-9_/.-]+|\.\/[./a-zA-Z0-9_/.-]+\.sh|[a-zA-Z0-9_/.-]+\.sh)' "$curr_script" | awk '{print $NF}' | sort | uniq)
             for script in $called; do
-              # 去掉参数，只保留脚本路径部分
+              # 去掉参数
               script_path="${script%% *}"
-              # 若是相对路径，补全
-              abs_path=$(dirname "$curr_script")/"$script_path"
-              abs_path=$(realpath "$abs_path" 2>/dev/null || echo "")
-              # 兼容部分绝对路径写法
-              if [[ ! -f "$abs_path" ]]; then
-                abs_path=$(find . -type f -name "$(basename "$script_path")" | head -n 1)
-              fi
-              if [[ -f "$abs_path" && -z "${SEEN["$abs_path"]}" ]]; then
-                echo "发现被调用脚本: $abs_path"
-                cp "$abs_path" ../extracted_script/
-                SCRIPT_QUEUE+=("$abs_path")
-                SEEN["$abs_path"]=1
-              fi
+              # 查找所有同名文件
+              while IFS= read -r found; do
+                abs_path="$found"
+                if [[ -f "$abs_path" && -z "${SEEN["$abs_path"]}" ]]; then
+                  echo "发现被调用脚本: $abs_path"
+                  cp --parents "$abs_path" ../extracted_script/
+                  SCRIPT_QUEUE+=("$abs_path")
+                  SEEN["$abs_path"]=1
+                fi
+              done < <(find . -type f -name "$(basename "$script_path")")
             done
           done
 
-          # 展示所有提取出的脚本内容
+          # 展示所有提取出的脚本内容（路径唯一，防止同名覆盖）
           echo "==== 脚本内容预览 ===="
-          for sc in ../extracted_script/*.sh; do
+          find ../extracted_script -type f -name "*.sh" | while read sc; do
             echo "------ $sc ------"
             cat "$sc"
             echo
@@ -79,4 +76,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: oplus_kernel_build_scripts
-          path: extracted_script/*.sh
+          path: extracted_script/
