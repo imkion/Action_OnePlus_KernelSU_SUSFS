@@ -317,17 +317,24 @@ jobs:
 
       - name: 编译前强制注入SCX到最终 .config（仅5.10/5.15，SCX选项打开时，带缩进）
         if: ${{ (github.event.inputs.KERNEL_VERSION == '5.10' || github.event.inputs.KERNEL_VERSION == '5.15') && github.event.inputs.SCX == 'true' }}
+        shell: bash
         run: |
-          for file in $(find kernel_workspace/kernel_platform -type f -name "build.sh"); do
-            grep -q "SCX patch start" "$file" && continue
-            sed -i '/echo " Building kernel"/i\# ==== SCX patch start ====' "$file"
-            sed -i '/echo " Building kernel"/i\if [ -f "${OUT_DIR}/.config" ]; then' "$file"
-            sed -i '/echo " Building kernel"/i\    grep -q "^CONFIG_SCHED_CLASS_EXT=y" "${OUT_DIR}/.config" || echo "CONFIG_SCHED_CLASS_EXT=y" >> "${OUT_DIR}/.config"' "$file"
-            sed -i '/echo " Building kernel"/i\    (cd ${OUT_DIR} && make O=${OUT_DIR} olddefconfig)' "$file"
-            sed -i '/echo " Building kernel"/i\fi' "$file"
-            sed -i '/echo " Building kernel"/i\# ==== SCX patch end ====' "$file"
-            echo "已patch: $file"
-          done
+          target_file="kernel_workspace/kernel_platform/build/kernel/build.sh"
+          if [[ ! -f "$target_file" ]]; then
+            echo "❌ 未找到 build.sh: $target_file"
+            exit 1
+          fi
+          if grep -q "SCX patch start" "$target_file"; then
+            echo "已patch: $target_file"
+            exit 0
+          fi
+          sed -i '/echo " Building kernel"/i\# ==== SCX patch start ====' "$target_file"
+          sed -i '/echo " Building kernel"/i\if [ -f "${OUT_DIR}/.config" ]; then' "$target_file"
+          sed -i '/echo " Building kernel"/i\    grep -q "^CONFIG_SCHED_CLASS_EXT=y" "${OUT_DIR}/.config" || echo "CONFIG_SCHED_CLASS_EXT=y" >> "${OUT_DIR}/.config"' "$target_file"
+          sed -i '/echo " Building kernel"/i\    (cd ${OUT_DIR} && make O=${OUT_DIR} olddefconfig)' "$target_file"
+          sed -i '/echo " Building kernel"/i\fi' "$target_file"
+          sed -i '/echo " Building kernel"/i\# ==== SCX patch end ====' "$target_file"
+          echo "✅ 已patch: $target_file"
 
       - name: 编译内核
         run: |
