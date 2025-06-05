@@ -229,20 +229,46 @@ jobs:
             fi
           done
 
-      - name: 注入并启用 sched_ext (SCX) 调度补丁
+      - name: 清理旧SCX源文件
+        run: |
+          find kernel_workspace/kernel_platform/common/kernel/sched/ -type f \( -name "ext.*" -o -name "scx_*" -o -name "hmbird_*" \) -delete || true
+
+      - name: 注入并启用 sched_ext (SCX) 调度补丁（自动适配多机型）
         run: |
           set -e
           cd kernel_workspace/kernel_platform/
-          # 1. 拉取SCX源码（推荐HanKuCha/sched_ext）
           git clone --depth=1 https://github.com/HanKuCha/sched_ext.git
           cp -r ./sched_ext/* ./common/kernel/sched/
-          rm -rf ./sched_ext/.git
+          rm -rf ./sched_ext
 
-          # 2. 应用结构patch（只做glue/Kconfig/Makefile）
-          cd ../../..
-          wget -O enable_scx_struct.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx_struct.patch
-          patch -p1 --batch --forward < enable_scx_struct.patch
-          echo "✅ sched_ext (SCX) 结构已注入，源码文件已同步"
+          # 自动检测入口并幂等插入
+          if [ -f common/kernel/sched/build_policy.c ]; then
+            echo "检测到 build_policy.c，应用结构patch"
+            cd ../../..
+            wget -O enable_scx_struct.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx_struct.patch
+            patch -p1 --batch --forward < enable_scx_struct.patch
+          elif [ -f common/kernel/sched/core.c ]; then
+            echo "未检测到 build_policy.c，自动fallback到 core.c"
+            cd kernel_workspace/kernel_platform/common/kernel/sched
+            if ! grep -q 'include "ext.c"' core.c; then
+              sed -i '/#endif/i\
+#ifdef CONFIG_SCHED_CLASS_EXT\
+# include "ext.c"\
+# include "hmbird_sched_proc_main.c"\
+#endif\
+\
+#ifdef CONFIG_SLIM_SCHED\
+# include "slim_sysctl.c"\
+#endif' core.c
+            fi
+            cd ../../../../../..
+            wget -O enable_scx_struct_core.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx_struct_core.patch
+            patch -p1 --batch --forward < enable_scx_struct_core.patch || true
+          else
+            echo "❌ 未检测到 build_policy.c 或 core.c，请检查目录结构"
+            exit 1
+          fi
+          echo "✅ sched_ext (SCX) 结构已自动适配并注入"
 
       - name: 写入SCX配置文件
         run: |
