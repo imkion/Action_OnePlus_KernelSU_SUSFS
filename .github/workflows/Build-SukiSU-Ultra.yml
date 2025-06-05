@@ -244,8 +244,8 @@ jobs:
           if [ -f common/kernel/sched/build_policy.c ]; then
             echo "检测到 build_policy.c，应用结构patch"
             cd ../../..
-            wget -O enable_scx_struct.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
-            patch -p1 --batch --forward < enable_scx_struct.patch
+            wget -O enable_scx.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
+            patch -p1 --batch --forward < enable_scx.patch
           elif [ -f common/kernel/sched/core.c ]; then
             echo "未检测到 build_policy.c，自动fallback到 core.c"
             cd kernel_workspace/kernel_platform/common/kernel/sched
