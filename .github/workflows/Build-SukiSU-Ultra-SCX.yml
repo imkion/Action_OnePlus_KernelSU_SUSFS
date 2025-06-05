@@ -1,4 +1,4 @@
-name: Build SukiSU Ultra
+name: Build SukiSU Ultra SCX
 
 on:
   workflow_dispatch:
