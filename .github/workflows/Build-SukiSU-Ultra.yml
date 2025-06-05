@@ -76,7 +76,12 @@ on:
           - "6.1"
           - "6.6"
       ZRAM:
-        description: "是否启用更多ZRAM（推荐开启）"
+        description: "是否启用更多ZRAM算法（推荐开启）"
+        type: boolean
+        required: true
+        default: true
+      SCX:
+        description: "是否启用SCX调速器"
         type: boolean
         required: true
         default: true
@@ -186,10 +191,12 @@ jobs:
           mkdir -p $COMMON/fs $COMMON/include/linux $COMMON/lib $COMMON/crypto
           cp $PATCHDIR/fs/* $COMMON/fs/ 2>/dev/null || true
           cp $PATCHDIR/include/linux/* $COMMON/include/linux/ 2>/dev/null || true
-          cp -r $SUKIPATCH/other/zram/lz4k/include/linux/* $COMMON/include/linux/ 2>/dev/null || true
-          cp -r $SUKIPATCH/other/zram/lz4k/lib/* $COMMON/lib/ 2>/dev/null || true
-          cp -r $SUKIPATCH/other/zram/lz4k/crypto/* $COMMON/crypto/ 2>/dev/null || true
-          cp -r $SUKIPATCH/other/zram/lz4k_oplus $COMMON/lib/ 2>/dev/null || true
+          if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
+            cp -r $SUKIPATCH/other/zram/lz4k/include/linux/* $COMMON/include/linux/ 2>/dev/null || true
+            cp -r $SUKIPATCH/other/zram/lz4k/lib/* $COMMON/lib/ 2>/dev/null || true
+            cp -r $SUKIPATCH/other/zram/lz4k/crypto/* $COMMON/crypto/ 2>/dev/null || true
+            cp -r $SUKIPATCH/other/zram/lz4k_oplus $COMMON/lib/ 2>/dev/null || true
+          fi
           cp ../ogki2gki.patch $COMMON/
           cp ../ogki2gki_c99fix.patch $COMMON/
 
@@ -207,6 +214,7 @@ jobs:
           echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
 
       - name: 应用zram相关补丁
+        if: ${{ github.event.inputs.ZRAM == 'true' }}
         run: |
           set -e
           cd kernel_workspace/kernel_platform/common
@@ -228,58 +236,6 @@ jobs:
               echo "❗ 未找到$PATCH_NAME补丁 (kernel version ${{ github.event.inputs.KERNEL_VERSION }})"
             fi
           done
-
-      - name: 清理旧SCX源文件
-        run: |
-          find kernel_workspace/kernel_platform/common/kernel/sched/ -type f \( -name "ext.*" -o -name "scx_*" -o -name "hmbird_*" \) -delete || true
-
-      - name: 注入并启用 sched_ext (SCX) 调度补丁（自动适配多机型）
-        run: |
-          set -e
-          cd kernel_workspace/kernel_platform/
-          echo "当前目录: $(pwd)"
-          ls -l
-          ls -l common/kernel/sched/
-          git clone --depth=1 https://github.com/HanKuCha/sched_ext.git
-          cp -r ./sched_ext/* ./common/kernel/sched/
-          rm -rf ./sched_ext
-
-          wget https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/enable_scx.patch
-          sed -i 's/\r$//' enable_scx.patch
-          head -10 enable_scx.patch
-          file enable_scx.patch
-
-          if [ -f common/kernel/sched/build_policy.c ]; then
-            echo "检测到 build_policy.c，应用结构patch"
-            patch -p1 --batch --forward < enable_scx.patch
-          elif [ -f common/kernel/sched/core.c ]; then
-            echo "未检测到 build_policy.c，自动fallback到 core.c"
-            cd common/kernel/sched
-            if ! grep -q 'SCHED_EXT GLUE BEGIN' core.c; then
-              echo "" >> core.c
-              echo "/* ====== SCHED_EXT GLUE BEGIN (auto-injected by workflow) ====== */" >> core.c
-              echo "#ifdef CONFIG_SCHED_CLASS_EXT" >> core.c
-              echo "# include \"ext.c\"" >> core.c
-              echo "# include \"hmbird_sched_proc_main.c\"" >> core.c
-              echo "#endif" >> core.c
-              echo "" >> core.c
-              echo "#ifdef CONFIG_SLIM_SCHED" >> core.c
-              echo "# include \"slim_sysctl.c\"" >> core.c
-              echo "#endif" >> core.c
-              echo "/* ====== SCHED_EXT GLUE END ====== */" >> core.c
-            fi
-            cd ../../../../
-            patch -p1 --batch --forward < enable_scx.patch || true
-          else
-            echo "❌ 未检测到 build_policy.c 或 core.c，请检查目录结构"
-            exit 1
-          fi
-          echo "✅ sched_ext (SCX) 结构已自动适配并注入"
-
-      - name: 写入SCX配置文件
-        run: |
-          echo "CONFIG_SCHED_CLASS_EXT=y" > kernel_workspace/kernel_platform/scx.config
-          echo "CONFIG_SCHED_DEBUG=y" >> kernel_workspace/kernel_platform/scx.config
 
       - name: 写入SUSFS、ZRAM内核配置
         run: |
@@ -327,28 +283,17 @@ jobs:
             cd kernel_workspace/kernel_platform/common
             export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
             make LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out gki_defconfig
-            scripts/kconfig/merge_config.sh -m out/.config ../../scx.config
             yes "" | make ARCH=arm64 O=out olddefconfig
-            grep CONFIG_SCHED_CLASS_EXT out/.config || (echo "SCX未启用!" && exit 1)
+            make -j2 LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out all
+          elif [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "5.10" || "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
+            cd kernel_workspace/kernel_platform/common
+            export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r450784d/bin:/usr/lib/ccache:$PATH"
+            make LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out gki_defconfig
+            yes "" | make ARCH=arm64 O=out olddefconfig
             make -j2 LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out all
           else
             cd kernel_workspace
-            if grep -q merge_config kernel_platform/oplus/build/oplus_build_kernel.sh; then
-              LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki kernel_platform/scx.config
-            else
-              LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
-              DEFCONFIG_PATH=$(find kernel_platform -name .config | grep -v '\.git' | head -n 1)
-              if [[ -z "$DEFCONFIG_PATH" ]]; then
-                echo "ERROR: 未找到 .config，SCX 检查失败！"
-                exit 1
-              fi
-              if ! grep -q CONFIG_SCHED_CLASS_EXT=y "$DEFCONFIG_PATH"; then
-                echo "CONFIG_SCHED_CLASS_EXT=y" >> "$DEFCONFIG_PATH"
-                echo "CONFIG_SCHED_DEBUG=y" >> "$DEFCONFIG_PATH"
-                make -C "$(dirname "$DEFCONFIG_PATH")" ARCH=arm64 olddefconfig
-              fi
-              grep CONFIG_SCHED_CLASS_EXT "$DEFCONFIG_PATH" || (echo "SCX未启用!" && exit 1)
-            fi
+            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
           fi
 
       - name: 制作AnyKernel3内核刷机包
