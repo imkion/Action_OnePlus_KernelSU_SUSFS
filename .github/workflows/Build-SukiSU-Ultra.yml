@@ -246,6 +246,8 @@ jobs:
           rm -rf ./sched_ext/.git
           cd common/kernel/sched
 
+          # 保证Kconfig存在（若无则新建）
+          [ -f Kconfig ] || touch Kconfig
           if ! grep -q SCHED_CLASS_EXT Kconfig; then
             echo "config SCHED_CLASS_EXT" >> Kconfig
             echo "    bool \"Enable SchedExt (HanKuCha SCX)\"" >> Kconfig
@@ -254,11 +256,25 @@ jobs:
             echo "      Enable the external SCX scheduler for advanced tuning." >> Kconfig
           fi
 
+          # 保证 Makefile 追加
           grep -q hmbird_sched_proc_main.o Makefile || \
             echo 'obj-$(CONFIG_SCHED_CLASS_EXT) += hmbird_sched_proc_main.o slim_sysctl.o' >> Makefile
 
+          # 保证 defconfig 追加
           DEFCONFIG=../../arch/arm64/configs/gki_defconfig
           grep -q CONFIG_SCHED_CLASS_EXT "$DEFCONFIG" || echo 'CONFIG_SCHED_CLASS_EXT=y' >> "$DEFCONFIG"
+
+      - name: "[DEBUG] SCX目录结构和主要文件内容"
+        if: ${{ github.event.inputs.SCX == 'true' }}
+        run: |
+          echo "==== [DEBUG] kernel_workspace/kernel_platform/common/kernel/sched 目录结构 ===="
+          ls -l kernel_workspace/kernel_platform/common/kernel/sched || true
+          echo "==== [DEBUG] Kconfig内容 ===="
+          cat kernel_workspace/kernel_platform/common/kernel/sched/Kconfig || echo "无Kconfig"
+          echo "==== [DEBUG] Makefile内容 ===="
+          cat kernel_workspace/kernel_platform/common/kernel/sched/Makefile || echo "无Makefile"
+          echo "==== [DEBUG] defconfig内容 ===="
+          cat kernel_workspace/kernel_platform/common/arch/arm64/configs/gki_defconfig || echo "无defconfig"
 
       - name: 写入SUSFS、ZRAM内核配置
         run: |
@@ -299,6 +315,11 @@ jobs:
 
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
+      - name: "[DEBUG] 编译前显示out/.config内容（如有）"
+        run: |
+          echo "==== [DEBUG] 编译前 .config 内容 ===="
+          cat kernel_workspace/kernel_platform/common/out/.config || echo "无.config"
+
       - name: 编译内核
         run: |
           set -e
@@ -311,6 +332,33 @@ jobs:
           else
             cd kernel_workspace
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} gki
+          fi
+
+      - name: "[DEBUG] 编译后检查SCX对象文件与符号"
+        if: ${{ github.event.inputs.SCX == 'true' }}
+        run: |
+          echo "==== [DEBUG] 查找hmbird_sched和slim_sysctl对象文件 ===="
+          find kernel_workspace/kernel_platform/common/out -name "hmbird_sched_proc_main.o" || echo "无hmbird_sched_proc_main.o"
+          find kernel_workspace/kernel_platform/common/out -name "slim_sysctl.o" || echo "无slim_sysctl.o"
+          echo "==== [DEBUG] 查找Image文件 ===="
+          find kernel_workspace/kernel_platform/common/out -name "Image" || echo "无Image"
+
+      - name: "[DEBUG] 编译后.config检查SCX配置"
+        if: ${{ github.event.inputs.SCX == 'true' }}
+        run: |
+          echo "==== [DEBUG] 编译后 .config 检查SCX配置 ===="
+          grep CONFIG_SCHED_CLASS_EXT kernel_workspace/kernel_platform/common/out/.config || echo "无CONFIG_SCHED_CLASS_EXT"
+
+      - name: "[DEBUG] Image文件中查找SCX符号（strings）"
+        if: ${{ github.event.inputs.SCX == 'true' }}
+        run: |
+          IMAGE=$(find kernel_workspace/kernel_platform/common/out -name "Image" | head -n 1)
+          if [[ -f "$IMAGE" ]]; then
+            echo "==== [DEBUG] Image中查找hmbird_sched相关符号 ===="
+            strings "$IMAGE" | grep -i hmbird_sched || echo "Image中无hmbird_sched相关字符串"
+            strings "$IMAGE" | grep -i slim_sysctl || echo "Image中无slim_sysctl相关字符串"
+          else
+            echo "未找到Image文件"
           fi
 
       - name: 制作AnyKernel3内核刷机包
