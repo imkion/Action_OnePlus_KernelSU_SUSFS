@@ -1,26 +1,19 @@
 diff --git a/common/kernel/sched/Kconfig b/common/kernel/sched/Kconfig
-@@ ... @@
+--- a/common/kernel/sched/Kconfig
++++ b/common/kernel/sched/Kconfig
+@@
 +config SCHED_CLASS_EXT
-+    bool "Enable sched_ext support"
++    bool "Enable SchedExt (HanKuCha SCX)"
 +    default n
 +    help
-+      Enable OnePlus/OPPO sched_ext (SCX) 调度特性。
-+
-+config SLIM_SCHED
-+    bool "Enable slim_sched interface"
-+    default n
-+    help
-+      Enable slim_sched 相关调度接口与调优参数。
++      Enable the external SCX scheduler for advanced tuning.
 diff --git a/common/kernel/sched/Makefile b/common/kernel/sched/Makefile
-@@ ... @@
-+obj-$(CONFIG_SCHED_CLASS_EXT) += ext.o scx_main.o hmbird_sched_proc_main.o
-diff --git a/common/kernel/sched/build_policy.c b/common/kernel/sched/build_policy.c
-@@ ... @@
-+#ifdef CONFIG_SCHED_CLASS_EXT
-+# include "ext.c"
-+# include "hmbird_sched_proc_main.c"
-+#endif
-+
-+#ifdef CONFIG_SLIM_SCHED
-+# include "slim_sysctl.c"
-+#endif
+--- a/common/kernel/sched/Makefile
++++ b/common/kernel/sched/Makefile
+@@
++obj-$(CONFIG_SCHED_CLASS_EXT) += hmbird_sched_proc_main.o slim_sysctl.o
+diff --git a/common/arch/arm64/configs/gki_defconfig b/common/arch/arm64/configs/gki_defconfig
+--- a/common/arch/arm64/configs/gki_defconfig
++++ b/common/arch/arm64/configs/gki_defconfig
+@@
++CONFIG_SCHED_CLASS_EXT=y
