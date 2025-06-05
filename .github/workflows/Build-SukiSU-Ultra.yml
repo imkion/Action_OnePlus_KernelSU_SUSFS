@@ -318,7 +318,7 @@ jobs:
       - name: "[DEBUG] 编译前显示out/.config内容（如有）"
         run: |
           echo "==== [DEBUG] 编译前 .config 内容 ===="
-          cat kernel_workspace/kernel_platform/common/out/.config || echo "无.config"
+          cat kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/.config || echo "无.config"
 
       - name: 编译内核
         run: |
@@ -341,13 +341,13 @@ jobs:
           find kernel_workspace/kernel_platform/common/out -name "hmbird_sched_proc_main.o" || echo "无hmbird_sched_proc_main.o"
           find kernel_workspace/kernel_platform/common/out -name "slim_sysctl.o" || echo "无slim_sysctl.o"
           echo "==== [DEBUG] 查找Image文件 ===="
-          find kernel_workspace/kernel_platform/common/out -name "Image" || echo "无Image"
+          find kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/arch/arm64/boot/ -name "Image" || echo "无Image"
 
       - name: "[DEBUG] 编译后.config检查SCX配置"
         if: ${{ github.event.inputs.SCX == 'true' }}
         run: |
           echo "==== [DEBUG] 编译后 .config 检查SCX配置 ===="
-          grep CONFIG_SCHED_CLASS_EXT kernel_workspace/kernel_platform/common/out/.config || echo "无CONFIG_SCHED_CLASS_EXT"
+          grep CONFIG_SCHED_CLASS_EXT kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/.config || echo "无CONFIG_SCHED_CLASS_EXT"
 
       - name: "[DEBUG] Image文件中查找SCX符号（strings）"
         if: ${{ github.event.inputs.SCX == 'true' }}
