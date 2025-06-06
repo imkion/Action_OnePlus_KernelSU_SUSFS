@@ -355,6 +355,9 @@ jobs:
           curl -s https://api.github.com/repos/FurLC/ZRAM-Module/releases/latest | \
             grep "browser_download_url" | grep "ZRAM-Module-.*\.zip" | cut -d '"' -f 4 | xargs wget -N
           unzip "$(ls -t ZRAM-Module-*.zip | head -1)" -d ZRAM-Module
+          mkdir ZRAM-Module/zram
+          cp kernel_workspace/kernel_platform/common/out/drivers/block/zram/zram.ko ZRAM-Module/zram/zram.ko
+
       - name: 上传ZRAM-Module
         if: ${{ github.event.inputs.ZRAM == 'true' }}
         uses: actions/upload-artifact@v4
