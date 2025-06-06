@@ -143,8 +143,17 @@ jobs:
       - name: 获取manifest并生成哈希
         id: manifest_hash
         run: |
-          curl --retry 3 -LSs "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}.xml" -o manifest.xml
-          echo "hash=$(sha256sum manifest.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
+          mkdir -p kernel_workspace
+          curl --retry 3 -LSs "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}.xml" -o kernel_workspace/manifest.xml
+          echo "hash=$(sha256sum kernel_workspace/manifest.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: 恢复repo与源码缓存（极致加速）
+        uses: actions/cache@v4
+        with:
+          path: |
+            kernel_workspace/.repo
+            kernel_workspace/kernel_platform
+          key: repo-src-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
 
       - name: 缓存ccache
         uses: actions/cache@v4
@@ -165,24 +174,17 @@ jobs:
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
 
-      - name: 缓存repo与源码
-        uses: actions/cache@v4
-        with:
-          path: |
-            kernel_workspace/.repo
-            kernel_workspace/kernel_platform
-          key: repo-src-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
-
       - name: 初始化repo并同步源码
         run: |
-          mkdir -p kernel_workspace
           cd kernel_workspace
           if [ ! -d ".repo" ]; then
             repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
               -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
-              -m ../manifest.xml --depth=1
+              -m manifest.xml --depth=1
           fi
-          repo sync -c --fail-fast --force-sync --no-tags --no-clone-bundle -j2
+          if [ ! -d "kernel_platform" ]; then
+            repo sync -c --fail-fast --force-sync --no-tags --no-clone-bundle -j2
+          fi
 
           # 清理abi导出和-dirty标记
           rm kernel_platform/common/android/abi_gki_protected_exports_* || true
@@ -283,49 +285,58 @@ jobs:
             fi
           done
 
-      - name: 写入SUSFS与ZRAM内核配置及性能优化
+      - name: 写入SUSFS与ZRAM内核配置
         run: |
           set -e
           cd kernel_workspace/kernel_platform
           DEFCONFIG=./common/arch/arm64/configs/gki_defconfig
 
-          # --- SUSFS/KSU基础配置 ---
-          echo ""                                                     >> "$DEFCONFIG"
-          echo "# SUSFS/KSU基础配置"                                  >> "$DEFCONFIG"
-          echo "CONFIG_KSU=y"                                         >> "$DEFCONFIG"  # 启用KernelSU
-          echo "CONFIG_KPM=y"                                         >> "$DEFCONFIG"  # 启用Kernel Patch Manager
-          echo "CONFIG_KSU_SUSFS_SUS_SU=n"                            >> "$DEFCONFIG"  # SUSFS su兼容模式（关闭）
-          echo "CONFIG_KSU_MANUAL_HOOK=y"                             >> "$DEFCONFIG"  # 手动挂钩
-          echo "CONFIG_KSU_SUSFS=y"                                   >> "$DEFCONFIG"  # 启用SUSFS
-          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y"                   >> "$DEFCONFIG"  # Magic Mount特性
-          echo "CONFIG_KSU_SUSFS_SUS_PATH=y"                          >> "$DEFCONFIG"  # SUSFS路径支持
-          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"                         >> "$DEFCONFIG"  # SUSFS挂载点支持
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y"    >> "$DEFCONFIG"  # 自动添加默认挂载
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y"           >> "$DEFCONFIG"  # 自动添加BIND挂载
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"                         >> "$DEFCONFIG"  # 启用SUSFS KSTAT支持
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n"                     >> "$DEFCONFIG"  # 关闭SUSFS OverlayFS
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y"                        >> "$DEFCONFIG"  # 尝试自动卸载
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$DEFCONFIG" # BIND挂载自动卸载
-          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"                       >> "$DEFCONFIG"  # 伪装UNAME
-          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"                        >> "$DEFCONFIG"  # 启用日志
-          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"            >> "$DEFCONFIG"  # 隐藏KSU/SUSFS符号
-          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"       >> "$DEFCONFIG"  # 伪装cmdline/bootconfig
-          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                     >> "$DEFCONFIG"  # 打开重定向支持
+          # SUSFS/KSU 基础配置
+          SUSFS_CONFIGS="
+          CONFIG_KSU=y
+          CONFIG_KPM=y
+          CONFIG_KSU_SUSFS_SUS_SU=n
+          CONFIG_KSU_MANUAL_HOOK=y
+          CONFIG_KSU_SUSFS=y
+          CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y
+          CONFIG_KSU_SUSFS_SUS_PATH=y
+          CONFIG_KSU_SUSFS_SUS_MOUNT=y
+          CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y
+          CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y
+          CONFIG_KSU_SUSFS_SUS_KSTAT=y
+          CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n
+          CONFIG_KSU_SUSFS_TRY_UMOUNT=y
+          CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y
+          CONFIG_KSU_SUSFS_SPOOF_UNAME=y
+          CONFIG_KSU_SUSFS_ENABLE_LOG=y
+          CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
+          CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
+          CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
+          "
 
-          echo ""                                                     >> "$DEFCONFIG"
-
-          # --- ZRAM配置块 ---
+          # ZRAM 配置块
+          ZRAM_CONFIGS=""
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
-            echo "# 启用ZRAM及主流压缩算法支持"                     >> "$DEFCONFIG"
-            echo "CONFIG_ZSMALLOC=y   # 启用ZRAM专用内存分配器"     >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4HC=y   # LZ4高压缩比算法"        >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4K=y    # LZ4K压缩算法"           >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4KD=y   # LZ4KD压缩算法"          >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_842=y     # 842硬件压缩算法"        >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y   # OPLUS定制LZ4K"     >> "$DEFCONFIG"
-            echo "CONFIG_ZRAM_WRITEBACK=y   # 启用ZRAM写回支持"     >> "$DEFCONFIG"
-            echo ""                                                  >> "$DEFCONFIG"
+            ZRAM_CONFIGS="
+            CONFIG_ZSMALLOC=y
+            CONFIG_CRYPTO_LZ4HC=y
+            CONFIG_CRYPTO_LZ4K=y
+            CONFIG_CRYPTO_LZ4KD=y
+            CONFIG_CRYPTO_842=y
+            CONFIG_CRYPTO_LZ4K_OPLUS=y
+            CONFIG_ZRAM_WRITEBACK=y
+            "
           fi
+
+          # 写入配置，不包含注释
+          {
+            echo ""
+            echo "${SUSFS_CONFIGS}"
+            if [[ -n "$ZRAM_CONFIGS" ]]; then
+              echo ""
+              echo "${ZRAM_CONFIGS}"
+            fi
+          } >> "$DEFCONFIG"
 
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
