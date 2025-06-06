@@ -99,7 +99,6 @@ jobs:
       CCACHE_HARDLINK: "true"
       CCACHE_DIR: /home/runner/.ccache
       CCACHE_MAXSIZE: 8G
-
     steps:
       - name: 最大化构建空间
         uses: easimon/maximize-build-space@master
@@ -115,6 +114,7 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y python3 git curl ccache unzip libelf-dev lld llvm clang llvm-dev
+ 
       - name: 检出仓库
         uses: actions/checkout@v4
 
@@ -125,6 +125,7 @@ jobs:
           curl -LSs "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}.xml" \
             -o kernel_workspace/${{ github.event.inputs.FEIL }}.xml
           echo "hash=$(sha256sum kernel_workspace/${{ github.event.inputs.FEIL }}.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
+
       - name: 恢复ccache缓存
         uses: actions/cache@v3
         with:
@@ -132,15 +133,18 @@ jobs:
           key: ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
           restore-keys: |
             ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-
+ 
       - name: 配置Git信息
         run: |
           git config --global user.name "FurLC"
           git config --global user.email "qq441791056@163.com"
+  
       - name: 安装repo工具
         run: |
           curl --retry 3 https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
+
       - name: 初始化repo并同步源码
         run: |
           set -e
@@ -161,6 +165,7 @@ jobs:
             sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' $script
             sed -i '$s|echo "\$res"|echo "-FurLC"|' $script
           done
+ 
       - name: 注入KernelSU-SukiSU Ultra
         run: |
           cd kernel_workspace/kernel_platform
@@ -203,6 +208,7 @@ jobs:
           patch -p1 -F 3 < syscall_hooks.patch || true
           patch -p1 -F 3 < ogki2gki_c99fix.patch
           echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
+    
       - name: 应用zram相关补丁
         run: |
           set -e
@@ -223,6 +229,7 @@ jobs:
               echo "❗ 未找到$PATCH_NAME补丁 (kernel version ${{ github.event.inputs.KERNEL_VERSION }})"
             fi
           done
+  
       - name: 写入SUSFS与ZRAM内核配置
         run: |
           cd kernel_workspace/kernel_platform
@@ -260,6 +267,7 @@ jobs:
             echo "CONFIG_ZRAM_WRITEBACK=y   # 启用ZRAM写回支持" >> "$DEFCONFIG"
           fi
           sed -i 's/check_defconfig//' ./common/build.config.gki
+ 
       - name: 注入sched_ext调度模块
         run: |
           cd kernel_workspace/kernel_platform/
@@ -268,6 +276,7 @@ jobs:
           rm -rf sched_ext/.git
           cd common/kernel/sched
           sed -i.bak '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
+   
       - name: 编译内核
         run: |
           set -e
@@ -282,6 +291,7 @@ jobs:
             cd $GITHUB_WORKSPACE/kernel_workspace
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           fi
+   
       - name: 制作AnyKernel3内核刷机包
         run: |
           git clone https://github.com/Kernel-SU/AnyKernel3 AnyKernel3-no_kpm --depth=1
@@ -312,6 +322,7 @@ jobs:
             echo "未找到 Image 文件，构建可能失败"
             exit 1
           fi
+  
       - name: 上传AnyKernel3 (No_KPM)
         uses: actions/upload-artifact@v4
         with:
@@ -330,6 +341,7 @@ jobs:
           mv oImage Image
           cp Image $GITHUB_WORKSPACE/AnyKernel3-kpm/Image
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
+  
       - name: 上传AnyKernel3 (KPM)
         uses: actions/upload-artifact@v4
         with:
