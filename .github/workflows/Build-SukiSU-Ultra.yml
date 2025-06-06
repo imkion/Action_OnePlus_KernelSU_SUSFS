@@ -92,6 +92,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
+      LANG: C
+      LC_ALL: C
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
@@ -181,10 +183,15 @@ jobs:
               -m ../manifest.xml --depth=1
           fi
           repo sync -c --fail-fast --force-sync --no-tags --no-clone-bundle -j2
+
           # 清理abi导出和-dirty标记
           rm kernel_platform/common/android/abi_gki_protected_exports_* || true
           rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || true
-          for script in kernel_platform/common/scripts/setlocalversion kernel_platform/msm-kernel/scripts/setlocalversion kernel_platform/external/dtc/scripts/setlocalversion; do
+
+          for script in \
+            kernel_platform/common/scripts/setlocalversion \
+            kernel_platform/msm-kernel/scripts/setlocalversion \
+            kernel_platform/external/dtc/scripts/setlocalversion; do
             sed -i 's/ -dirty//g' "$script"
             sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$script"
             sed -i '$s|echo "\$res"|echo "-FurLC"|' "$script"
@@ -204,17 +211,27 @@ jobs:
         run: |
           set -e
           cd kernel_workspace
+
+          # --- susfs4ksu/SukiSU_patch准备 ---
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git \
             -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone --depth=1 https://github.com/SukiSU-Ultra/SukiSU_patch.git
+
+          # --- 额外补丁下载 ---
           wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 3 https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki.patch
           wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 3 https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki_c99fix.patch
+
           cd kernel_platform
+
           PATCHDIR="../susfs4ksu/kernel_patches"
           SUKIPATCH="../SukiSU_patch"
           COMMON="./common"
+
+          # --- SUSFS补丁和源码拷贝，结构分明 ---
+          echo "" >> "$COMMON/arch/arm64/configs/gki_defconfig"
           cp $PATCHDIR/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch $COMMON/ 2>/dev/null || true
           mkdir -p $COMMON/fs $COMMON/include/linux $COMMON/lib $COMMON/crypto
+
           cp $PATCHDIR/fs/* $COMMON/fs/ 2>/dev/null || true
           cp $PATCHDIR/include/linux/* $COMMON/include/linux/ 2>/dev/null || true
           cp -r $SUKIPATCH/other/zram/lz4k/include/linux/* $COMMON/include/linux/ 2>/dev/null || true
@@ -223,7 +240,10 @@ jobs:
           cp -r $SUKIPATCH/other/zram/lz4k_oplus $COMMON/lib/ 2>/dev/null || true
           cp ../ogki2gki.patch $COMMON/
           cp ../ogki2gki_c99fix.patch $COMMON/
+
           cd $COMMON
+
+          # --- PATCH 应用分块 ---
           SUSFS_PATCH="50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch"
           if [[ -f "$SUSFS_PATCH" ]]; then
             if [[ "${{ github.event.inputs.FEIL }}" != "oneplus_13t" ]]; then
@@ -232,6 +252,8 @@ jobs:
             fi
             patch -p1 < "$SUSFS_PATCH" || true
           fi
+
+          echo "" >> "$COMMON/arch/arm64/configs/gki_defconfig"
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           patch -p1 -F 3 < syscall_hooks.patch || true
           patch -p1 -F 3 < ogki2gki_c99fix.patch
@@ -241,6 +263,8 @@ jobs:
         run: |
           set -e
           cd kernel_workspace/kernel_platform/common
+
+          # --- ZRAM相关补丁分块 ---
           PATCH_LIST=(
             "lz4kd"
             "lz4k_oplus"
@@ -253,6 +277,7 @@ jobs:
               echo "🟢 应用补丁: $PATCH_NAME"
               cp "$PATCH_FILE" "$LOCAL_PATCH"
               patch -p1 -F 3 < "$LOCAL_PATCH" || echo "⚠️ $PATCH_NAME patch失败(已应用/冲突可忽略)"
+              echo "" >> "./arch/arm64/configs/gki_defconfig"
             else
               echo "❗ 未找到$PATCH_NAME补丁 (kernel version ${{ github.event.inputs.KERNEL_VERSION }})"
             fi
@@ -263,37 +288,43 @@ jobs:
           set -e
           cd kernel_workspace/kernel_platform
           DEFCONFIG=./common/arch/arm64/configs/gki_defconfig
-          # SUSFS/KSU 基础配置
+
+          # --- SUSFS/KSU基础配置 ---
+          echo ""                                                     >> "$DEFCONFIG"
           echo "# SUSFS/KSU基础配置"                                  >> "$DEFCONFIG"
-          echo "CONFIG_KSU=y"                                        >> "$DEFCONFIG"  # 启用KernelSU
-          echo "CONFIG_KPM=y"                                        >> "$DEFCONFIG"  # 启用Kernel Patch Manager
-          echo "CONFIG_KSU_SUSFS_SUS_SU=n"                           >> "$DEFCONFIG"  # SUSFS su兼容模式（关闭）
-          echo "CONFIG_KSU_MANUAL_HOOK=y"                            >> "$DEFCONFIG"  # 手动挂钩
-          echo "CONFIG_KSU_SUSFS=y"                                  >> "$DEFCONFIG"  # 启用SUSFS
-          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y"                  >> "$DEFCONFIG"  # Magic Mount特性
-          echo "CONFIG_KSU_SUSFS_SUS_PATH=y"                         >> "$DEFCONFIG"  # SUSFS路径支持
-          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"                        >> "$DEFCONFIG"  # SUSFS挂载点支持
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y"   >> "$DEFCONFIG"  # 自动添加默认挂载
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y"          >> "$DEFCONFIG"  # 自动添加BIND挂载
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"                        >> "$DEFCONFIG"  # 启用SUSFS KSTAT支持
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n"                    >> "$DEFCONFIG"  # 关闭SUSFS OverlayFS
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y"                       >> "$DEFCONFIG"  # 尝试自动卸载
+          echo "CONFIG_KSU=y"                                         >> "$DEFCONFIG"  # 启用KernelSU
+          echo "CONFIG_KPM=y"                                         >> "$DEFCONFIG"  # 启用Kernel Patch Manager
+          echo "CONFIG_KSU_SUSFS_SUS_SU=n"                            >> "$DEFCONFIG"  # SUSFS su兼容模式（关闭）
+          echo "CONFIG_KSU_MANUAL_HOOK=y"                             >> "$DEFCONFIG"  # 手动挂钩
+          echo "CONFIG_KSU_SUSFS=y"                                   >> "$DEFCONFIG"  # 启用SUSFS
+          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y"                   >> "$DEFCONFIG"  # Magic Mount特性
+          echo "CONFIG_KSU_SUSFS_SUS_PATH=y"                          >> "$DEFCONFIG"  # SUSFS路径支持
+          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"                         >> "$DEFCONFIG"  # SUSFS挂载点支持
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y"    >> "$DEFCONFIG"  # 自动添加默认挂载
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y"           >> "$DEFCONFIG"  # 自动添加BIND挂载
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"                         >> "$DEFCONFIG"  # 启用SUSFS KSTAT支持
+          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n"                     >> "$DEFCONFIG"  # 关闭SUSFS OverlayFS
+          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y"                        >> "$DEFCONFIG"  # 尝试自动卸载
           echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$DEFCONFIG" # BIND挂载自动卸载
-          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"                      >> "$DEFCONFIG"  # 伪装UNAME
-          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"                       >> "$DEFCONFIG"  # 启用日志
-          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"           >> "$DEFCONFIG"  # 隐藏KSU/SUSFS符号
-          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"      >> "$DEFCONFIG"  # 伪装cmdline/bootconfig
-          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                    >> "$DEFCONFIG"  # 打开重定向支持
-          # 如果启用ZRAM，写入ZRAM相关配置，每项均有注释
+          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"                       >> "$DEFCONFIG"  # 伪装UNAME
+          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"                        >> "$DEFCONFIG"  # 启用日志
+          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"            >> "$DEFCONFIG"  # 隐藏KSU/SUSFS符号
+          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"       >> "$DEFCONFIG"  # 伪装cmdline/bootconfig
+          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                     >> "$DEFCONFIG"  # 打开重定向支持
+
+          echo ""                                                     >> "$DEFCONFIG"
+
+          # --- ZRAM配置块 ---
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
-            echo "# 启用ZRAM及主流压缩算法支持"                 >> "$DEFCONFIG"
-            echo "CONFIG_ZSMALLOC=y   # 启用ZRAM专用内存分配器" >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4HC=y   # LZ4高压缩比算法"    >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4K=y    # LZ4K压缩算法"       >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4KD=y   # LZ4KD压缩算法"      >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_842=y     # 842硬件压缩算法"    >> "$DEFCONFIG"
-            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y   # OPLUS定制LZ4K" >> "$DEFCONFIG"
-            echo "CONFIG_ZRAM_WRITEBACK=y   # 启用ZRAM写回支持" >> "$DEFCONFIG"
+            echo "# 启用ZRAM及主流压缩算法支持"                     >> "$DEFCONFIG"
+            echo "CONFIG_ZSMALLOC=y   # 启用ZRAM专用内存分配器"     >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4HC=y   # LZ4高压缩比算法"        >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4K=y    # LZ4K压缩算法"           >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4KD=y   # LZ4KD压缩算法"          >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_842=y     # 842硬件压缩算法"        >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y   # OPLUS定制LZ4K"     >> "$DEFCONFIG"
+            echo "CONFIG_ZRAM_WRITEBACK=y   # 启用ZRAM写回支持"     >> "$DEFCONFIG"
+            echo ""                                                  >> "$DEFCONFIG"
           fi
 
           sed -i 's/check_defconfig//' ./common/build.config.gki
@@ -311,10 +342,13 @@ jobs:
         run: |
           set -e
           cd kernel_workspace/kernel_platform/common
-          echo "磁盘空间:"
+          echo ""
+          echo "==== 磁盘空间 ===="
           df -h
-          echo "内存信息:"
+          echo ""
+          echo "==== 内存信息 ===="
           free -m
+          echo ""
           export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
           export MAKEFLAGS="-j${BUILD_THREADS}"
           ulimit -v 6000000
@@ -327,10 +361,13 @@ jobs:
             cd $GITHUB_WORKSPACE/kernel_workspace
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }} 2>&1 | tee $GITHUB_WORKSPACE/kernel_build.log
           fi
-          echo "磁盘空间:"
+          echo ""
+          echo "==== 编译结束磁盘空间 ===="
           df -h
-          echo "内存信息:"
+          echo ""
+          echo "==== 编译结束内存信息 ===="
           free -m
+          echo ""
 
       - name: 上传编译日志
         uses: actions/upload-artifact@v4
@@ -345,6 +382,8 @@ jobs:
           git clone --depth=1 https://github.com/Kernel-SU/AnyKernel3 AnyKernel3-kpm
           rm -rf AnyKernel3-{kpm,no_kpm}/.git
           rm -f AnyKernel3-{kpm,no_kpm}/push.sh
+
+          # --- Image查找分块 ---
           KERNEL_OUT_DIRS=(
             "kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
             "kernel_workspace/kernel_platform/bazel-out/k8-fastbuild/bin/msm-kernel/${{ github.event.inputs.CPUD }}_gki_kbuild_mixed_tree/"
