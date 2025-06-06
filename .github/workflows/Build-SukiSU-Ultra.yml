@@ -173,14 +173,24 @@ jobs:
           curl --retry 3 https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
-
       - name: 初始化repo并同步源码
         run: |
           cd kernel_workspace
+
+          # 检查 manifest 文件是否存在于仓库
+          MANIFEST_URL="https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}"
+          if ! curl --head --silent --fail "$MANIFEST_URL" > /dev/null; then
+            MANIFEST_URL="https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/main/${{ github.event.inputs.FEIL }}"
+            if ! curl --head --silent --fail "$MANIFEST_URL" > /dev/null; then
+              echo "manifest 文件 ${{ github.event.inputs.FEIL }} 不存在，请检查参数！"
+              exit 1
+            fi
+          fi
+
           if [ ! -d ".repo" ]; then
             repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
               -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
-              -m manifest.xml --depth=1
+              -m ${{ github.event.inputs.FEIL }} --depth=1
           fi
           if [ ! -d "kernel_platform" ]; then
             repo sync -c --fail-fast --force-sync --no-tags --no-clone-bundle -j2
