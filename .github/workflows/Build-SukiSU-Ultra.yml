@@ -322,11 +322,19 @@ jobs:
             echo "未找到 Image 文件，构建可能失败"
             exit 1
           fi
+
+      - name: Remove _uv suffix from FEIL
+        id: feil_clean
+        run: |
+          clean_feil="${{ github.event.inputs.FEIL }}"
+          clean_feil="${clean_feil%_v}"  # 去掉结尾的 _v（如果有）
+          clean_feil="${clean_feil%_u}"  # 去掉结尾的 _u（如果有）
+          echo "value=$clean_feil" >> $GITHUB_OUTPUT
   
       - name: 上传AnyKernel3 (No_KPM)
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}_NoKPM
+          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_NoKPM
           path: AnyKernel3-no_kpm/*
 
       - name: 应用KPM补丁并制作KPM刷机包
@@ -345,7 +353,7 @@ jobs:
       - name: 上传AnyKernel3 (KPM)
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ github.event.inputs.FEIL }}_KPM
+          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_KPM
           path: AnyKernel3-kpm/*
 
       - name: 下载并解压zram内核模块
@@ -362,5 +370,5 @@ jobs:
         if: ${{ github.event.inputs.ZRAM == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ZRAM-Module_${{ github.event.inputs.KERNEL_VERSION }}_${{ github.event.inputs.FEIL }}
+          name: ZRAM-Module_${{ github.event.inputs.KERNEL_VERSION }}_${{ steps.feil_clean.outputs.value }}
           path: ZRAM-Module/*
