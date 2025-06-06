@@ -111,7 +111,6 @@ jobs:
 
       - name: 卸载无用包/locale/headers/man/doc
         run: |
-          set -e
           sudo apt-get purge -y 'linux-headers-*' 'linux-image-*' 'linux-modules-*' || true
           sudo apt-get remove -y locales || true
           sudo apt-get autoremove -y
@@ -127,7 +126,6 @@ jobs:
 
       - name: 安装编译依赖
         run: |
-          set -e
           sudo apt update
           sudo apt install -y python3 git curl ccache unzip libelf-dev lld llvm clang llvm-dev
 
@@ -140,14 +138,11 @@ jobs:
       - name: 检出仓库
         uses: actions/checkout@v4
 
-      - name: 下载manifest并生成ccache哈希
+      - name: 获取manifest并生成哈希
         id: manifest_hash
         run: |
-          set -e
-          mkdir -p kernel_workspace
-          curl --retry 3 -LSs "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}.xml" \
-            -o kernel_workspace/${{ github.event.inputs.FEIL }}.xml
-          echo "hash=$(sha256sum kernel_workspace/${{ github.event.inputs.FEIL }}.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
+          curl --retry 3 -LSs "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}.xml" -o manifest.xml
+          echo "hash=$(sha256sum manifest.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
 
       - name: 缓存ccache
         uses: actions/cache@v4
@@ -159,32 +154,31 @@ jobs:
 
       - name: 配置Git信息
         run: |
-          set -e
           git config --global user.name "FurLC"
           git config --global user.email "qq441791056@163.com"
 
       - name: 安装repo工具
         run: |
-          set -e
           curl --retry 3 https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
 
-      - name: 源码同步缓存
+      - name: 缓存repo与源码
         uses: actions/cache@v4
         with:
-          path: kernel_workspace/.repo
-          key: repo-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
+          path: |
+            kernel_workspace/.repo
+            kernel_workspace/kernel_platform
+          key: repo-src-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
 
       - name: 初始化repo并同步源码
         run: |
-          set -e
           mkdir -p kernel_workspace
           cd kernel_workspace
           if [ ! -d ".repo" ]; then
             repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
               -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
-              -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+              -m ../manifest.xml --depth=1
           fi
           repo sync -c --fail-fast --force-sync --no-tags --no-clone-bundle -j2
           # 清理abi导出和-dirty标记
