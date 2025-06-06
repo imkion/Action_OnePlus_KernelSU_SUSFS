@@ -97,6 +97,7 @@ jobs:
       CCACHE_HARDLINK: "true"
       CCACHE_DIR: /home/runner/.ccache
       CCACHE_MAXSIZE: 8G
+      BUILD_THREADS: 4
     steps:
       - name: 最大化构建空间
         uses: easimon/maximize-build-space@master
@@ -108,11 +109,33 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
+      - name: 卸载无用包/locale/headers/man/doc
+        run: |
+          set -e
+          sudo apt-get purge -y 'linux-headers-*' 'linux-image-*' 'linux-modules-*' || true
+          sudo apt-get remove -y locales || true
+          sudo apt-get autoremove -y
+          sudo apt-get clean
+          sudo rm -rf /usr/share/man /usr/share/doc /usr/share/info /usr/share/locale* /var/lib/apt/lists/*
+          sudo rm -rf /usr/include/* /usr/lib/locale/* /usr/share/i18n/*
+
+      - name: 缓存APT包
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-cache-${{ runner.os }}-${{ hashFiles('**/.github/workflows/build-sukisu-ultra.yaml') }}
+
       - name: 安装编译依赖
         run: |
           set -e
           sudo apt update
           sudo apt install -y python3 git curl ccache unzip libelf-dev lld llvm clang llvm-dev
+
+      - name: 缓存依赖下载
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache
+          key: python-cache-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
 
       - name: 检出仓库
         uses: actions/checkout@v4
@@ -126,11 +149,11 @@ jobs:
             -o kernel_workspace/${{ github.event.inputs.FEIL }}.xml
           echo "hash=$(sha256sum kernel_workspace/${{ github.event.inputs.FEIL }}.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
 
-      - name: 恢复ccache缓存
-        uses: actions/cache@v3
+      - name: 缓存ccache
+        uses: actions/cache@v4
         with:
           path: /home/runner/.ccache
-          key: ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
+          key: ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}-${{ steps.manifest_hash.outputs.hash }}
           restore-keys: |
             ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-
 
@@ -147,15 +170,23 @@ jobs:
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
 
+      - name: 源码同步缓存
+        uses: actions/cache@v4
+        with:
+          path: kernel_workspace/.repo
+          key: repo-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
+
       - name: 初始化repo并同步源码
         run: |
           set -e
           mkdir -p kernel_workspace
           cd kernel_workspace
-          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
-            -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
-            -m ${{ github.event.inputs.FEIL }}.xml --depth=1
-          repo sync --force-sync --no-tags --no-clone-bundle -j$(nproc)
+          if [ ! -d ".repo" ]; then
+            repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
+              -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
+              -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+          fi
+          repo sync -c --fail-fast --force-sync --no-tags --no-clone-bundle -j2
           # 清理abi导出和-dirty标记
           rm kernel_platform/common/android/abi_gki_protected_exports_* || true
           rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || true
@@ -286,16 +317,32 @@ jobs:
         run: |
           set -e
           cd kernel_workspace/kernel_platform/common
+          echo "磁盘空间:"
+          df -h
+          echo "内存信息:"
+          free -m
+          export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
+          export MAKEFLAGS="-j${BUILD_THREADS}"
+          ulimit -v 6000000
           if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
-            export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
             make LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out gki_defconfig
-            make -j$(nproc) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang \
+            make $MAKEFLAGS LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang \
               RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
-              PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole O=out all
+              PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole O=out all 2>&1 | tee $GITHUB_WORKSPACE/kernel_build.log
           else
             cd $GITHUB_WORKSPACE/kernel_workspace
-            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }} 2>&1 | tee $GITHUB_WORKSPACE/kernel_build.log
           fi
+          echo "磁盘空间:"
+          df -h
+          echo "内存信息:"
+          free -m
+
+      - name: 上传编译日志
+        uses: actions/upload-artifact@v4
+        with:
+          name: kernel_build_log_${{ github.run_id }}
+          path: kernel_build.log
 
       - name: 制作AnyKernel3内核刷机包
         run: |
@@ -364,40 +411,22 @@ jobs:
           name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_KPM
           path: AnyKernel3-kpm/*
 
-      - name: 下载并解压zram内核模块
+      - name: 下载、解压并查找zram内核模块
         if: ${{ github.event.inputs.ZRAM == 'true' }}
         run: |
           set -e
-          sudo apt install -y unzip
-          curl -s https://api.github.com/repos/FurLC/ZRAM-Module/releases/latest | \
-            grep "browser_download_url" | grep "ZRAM-Module-.*\.zip" | cut -d '"' -f 4 | xargs wget -N
-          unzip "$(ls -t ZRAM-Module-*.zip | head -1)" -d ZRAM-Module
-
-          zram1="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
-          zram2="./kernel_workspace/kernel_platform/out/dist/"
-          zram3="./kernel_workspace/kernel_platform/out/vendor/oplus/kernel/mm/"
-          zram4="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/vendor_dlkm/"
-          zram5="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/system_dlkm/flatten/lib/modules/"
-          zram6="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/"
-          zram7="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_bsp_hybridswap_zram/"
+          URL=$(curl -s https://api.github.com/repos/FurLC/ZRAM-Module/releases/latest | \
+            grep "browser_download_url" | grep "ZRAM-Module-.*\.zip" | cut -d '"' -f 4 | head -1)
+          wget -O ZRAM-Module-${{ github.event.inputs.KERNEL_VERSION }}.zip "$URL"
+          unzip ZRAM-Module-${{ github.event.inputs.KERNEL_VERSION }}.zip -d ZRAM-Module
+          zram_path=$(find ./kernel_workspace -type f -name "zram.ko" -printf '%T@ %s %p\n' | sort -nr | awk '{print $3}' | head -n1)
           target="./ZRAM-Module/zram/zram.ko"
-          for dir in "$zram1" "$zram2" "$zram3" "$zram4" "$zram5" "$zram6" "$zram7"; do
-            zram_path=$(find "$dir" -name "zram.ko" | head -n 1)
-            [ -n "$zram_path" ] && break
-          done
-          if [ -z "$zram_path" ]; then
-            zram_path=$(find "./kernel_workspace" -name "zram.ko" | head -n 1)
-          fi
           if [ -n "$zram_path" ] && [ -f "$zram_path" ]; then
-            echo "ZRAM module file located at: $zram_path"
-            mkdir -p "$(dirname "$target")"
-            if [ "$(realpath "$zram_path")" != "$(realpath "$target")" ]; then
-              cp "$zram_path" "$target"
-            else
-              echo "源文件与目标相同，跳过复制"
-            fi
+            echo "zram.ko定位于: $zram_path"
+            cp "$zram_path" "$target"
+            echo "zram.ko hash: $(sha256sum "$target")"
           else
-            echo "未找到 zram.ko 文件，构建可能失败"
+            echo "未找到zram.ko文件，构建可能失败"
             exit 1
           fi
 
