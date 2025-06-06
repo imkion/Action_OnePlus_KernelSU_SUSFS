@@ -201,8 +201,8 @@ jobs:
           cd $COMMON
           SUSFS_PATCH="50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch"
           if [[ -f "$SUSFS_PATCH" ]]; then
-            sed -i 's/-32,12 +32,38/-32,11 +32,37/g' "$SUSFS_PATCH"
-            sed -i '/#include <trace\/hooks\/fs.h>/d' "$SUSFS_PATCH"
+            # sed -i 's/-32,12 +32,38/-32,11 +32,37/g' "$SUSFS_PATCH"
+            # sed -i '/#include <trace\/hooks\/fs.h>/d' "$SUSFS_PATCH"
             patch -p1 < "$SUSFS_PATCH" || true
           fi
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
