@@ -174,6 +174,7 @@ jobs:
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
+ 
       - name: 设置susfs并应用主补丁
         run: |
           set -e
@@ -275,7 +276,6 @@ jobs:
           cp -r sched_ext/* common/kernel/sched
           rm -rf sched_ext/.git
           cd common/kernel/sched
-          sed -i.bak '/# include "ext.c"/a\# include "hmbird_sched_proc_main.c"\n#endif\n\n#ifdef CONFIG_SLIM_SCHED\n# include "slim_sysctl.c"' build_policy.c
    
       - name: 编译内核
         run: |
