@@ -92,14 +92,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      LANG: C
-      LC_ALL: C
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
       CCACHE_DIR: /home/runner/.ccache
       CCACHE_MAXSIZE: 8G
-      BUILD_THREADS: 4
     steps:
       - name: 最大化构建空间
         uses: easimon/maximize-build-space@master
@@ -111,93 +108,65 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
-      - name: 缓存APT包
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives
-          key: apt-cache-${{ runner.os }}-${{ hashFiles('**/.github/workflows/build-sukisu-ultra.yaml') }}
-
+  
       - name: 安装编译依赖
         run: |
+          set -e
           sudo apt update
           sudo apt install -y python3 git curl ccache unzip libelf-dev lld llvm clang llvm-dev
-
-      - name: 缓存依赖下载
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache
-          key: python-cache-${{ runner.os }}-${{ hashFiles('**/requirements.txt') }}
-
+   
       - name: 检出仓库
         uses: actions/checkout@v4
 
-      - name: 获取manifest并生成哈希
+   
+      - name: 下载manifest并生成ccache哈希
         id: manifest_hash
         run: |
+          set -e
           mkdir -p kernel_workspace
-          # 检查manifest实际是否存在
-          MANIFEST_URL="https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}.xml"
-          if ! curl --silent --fail "$MANIFEST_URL" -o kernel_workspace/manifest.xml; then
-            echo "❌ manifest 文件 ${{ github.event.inputs.FEIL }}.xml 不存在于 oneplus/${{ github.event.inputs.CPU }} 分支，请检查参数！"
-            exit 1
-          fi
-          echo "hash=$(sha256sum kernel_workspace/manifest.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
-
-      - name: 恢复repo与源码缓存（极致加速）
-        uses: actions/cache@v4
-        with:
-          path: |
-            kernel_workspace/.repo
-            kernel_workspace/kernel_platform
-          key: repo-src-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
-
-      - name: 缓存ccache
-        uses: actions/cache@v4
+          curl --retry 3 -LSs "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}.xml" \
+            -o kernel_workspace/${{ github.event.inputs.FEIL }}.xml
+          echo "hash=$(sha256sum kernel_workspace/${{ github.event.inputs.FEIL }}.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
+  
+      - name: 恢复ccache缓存
+        uses: actions/cache@v3
         with:
           path: /home/runner/.ccache
-          key: ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}-${{ steps.manifest_hash.outputs.hash }}
+          key: ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
           restore-keys: |
             ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-
-
+   
       - name: 配置Git信息
         run: |
+          set -e
           git config --global user.name "FurLC"
           git config --global user.email "qq441791056@163.com"
-
+  
       - name: 安装repo工具
         run: |
+          set -e
           curl --retry 3 https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
-
+  
       - name: 初始化repo并同步源码
         run: |
+          set -e
+          mkdir -p kernel_workspace
           cd kernel_workspace
-          if [ ! -d ".repo" ]; then
-            repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
-              -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
-              -m ${{ github.event.inputs.FEIL }}.xml --depth=1
-          fi
-          if [ ! -d "kernel_platform" ]; then
-            repo sync -c --fail-fast --force-sync --no-tags --no-clone-bundle -j2
-          fi
-          # 校验 defconfig 是否存在
-          if [ ! -f kernel_platform/common/arch/arm64/configs/gki_defconfig ]; then
-            echo "❌ kernel_platform/common/arch/arm64/configs/gki_defconfig 不存在！repo sync 失败或 manifest 配置有误。"
-            exit 2
-          fi
+          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
+            -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
+            -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+          repo sync --force-sync --no-tags --no-clone-bundle -j$(nproc)
           # 清理abi导出和-dirty标记
           rm kernel_platform/common/android/abi_gki_protected_exports_* || true
           rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || true
-          for script in \
-            kernel_platform/common/scripts/setlocalversion \
-            kernel_platform/msm-kernel/scripts/setlocalversion \
-            kernel_platform/external/dtc/scripts/setlocalversion; do
-            sed -i 's/ -dirty//g' "$script" || true
-            sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$script" || true
-            sed -i '$s|echo "\$res"|echo "-FurLC"|' "$script" || true
+          for script in kernel_platform/common/scripts/setlocalversion kernel_platform/msm-kernel/scripts/setlocalversion kernel_platform/external/dtc/scripts/setlocalversion; do
+            sed -i 's/ -dirty//g' "$script"
+            sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$script"
+            sed -i '$s|echo "\$res"|echo "-FurLC"|' "$script"
           done
-
+  
       - name: 注入KernelSU-SukiSU Ultra
         run: |
           set -e
@@ -206,8 +175,8 @@ jobs:
           cd KernelSU
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
-          sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSUVER}/" kernel/Makefile
-
+          sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
+  
       - name: 设置susfs并应用主补丁
         run: |
           set -e
@@ -244,7 +213,7 @@ jobs:
           patch -p1 -F 3 < syscall_hooks.patch || true
           patch -p1 -F 3 < ogki2gki_c99fix.patch
           echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
-
+ 
       - name: 应用zram相关补丁
         run: |
           set -e
@@ -261,60 +230,48 @@ jobs:
               echo "🟢 应用补丁: $PATCH_NAME"
               cp "$PATCH_FILE" "$LOCAL_PATCH"
               patch -p1 -F 3 < "$LOCAL_PATCH" || echo "⚠️ $PATCH_NAME patch失败(已应用/冲突可忽略)"
-              echo "" >> "./arch/arm64/configs/gki_defconfig"
             else
               echo "❗ 未找到$PATCH_NAME补丁 (kernel version ${{ github.event.inputs.KERNEL_VERSION }})"
             fi
           done
-
-      - name: 写入SUSFS与ZRAM内核配置
+ 
+      - name: 写入SUSFS与ZRAM内核配置及性能优化
         run: |
           set -e
           cd kernel_workspace/kernel_platform
           DEFCONFIG=./common/arch/arm64/configs/gki_defconfig
-          if [ ! -f "$DEFCONFIG" ]; then echo "$DEFCONFIG 不存在"; exit 1; fi
-          SUSFS_CONFIGS="
-          CONFIG_KSU=y
-          CONFIG_KPM=y
-          CONFIG_KSU_SUSFS_SUS_SU=n
-          CONFIG_KSU_MANUAL_HOOK=y
-          CONFIG_KSU_SUSFS=y
-          CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y
-          CONFIG_KSU_SUSFS_SUS_PATH=y
-          CONFIG_KSU_SUSFS_SUS_MOUNT=y
-          CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y
-          CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y
-          CONFIG_KSU_SUSFS_SUS_KSTAT=y
-          CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n
-          CONFIG_KSU_SUSFS_TRY_UMOUNT=y
-          CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y
-          CONFIG_KSU_SUSFS_SPOOF_UNAME=y
-          CONFIG_KSU_SUSFS_ENABLE_LOG=y
-          CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y
-          CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y
-          CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
-          "
-          ZRAM_CONFIGS=""
+          # SUSFS/KSU 基础配置
+          echo "# SUSFS/KSU基础配置"                                  >> "$DEFCONFIG"
+          echo "CONFIG_KSU=y"                                        >> "$DEFCONFIG"  # 启用KernelSU
+          echo "CONFIG_KPM=y"                                        >> "$DEFCONFIG"  # 启用Kernel Patch Manager
+          echo "CONFIG_KSU_SUSFS_SUS_SU=n"                           >> "$DEFCONFIG"  # SUSFS su兼容模式（关闭）
+          echo "CONFIG_KSU_MANUAL_HOOK=y"                            >> "$DEFCONFIG"  # 手动挂钩
+          echo "CONFIG_KSU_SUSFS=y"                                  >> "$DEFCONFIG"  # 启用SUSFS
+          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y"                  >> "$DEFCONFIG"  # Magic Mount特性
+          echo "CONFIG_KSU_SUSFS_SUS_PATH=y"                         >> "$DEFCONFIG"  # SUSFS路径支持
+          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"                        >> "$DEFCONFIG"  # SUSFS挂载点支持
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y"   >> "$DEFCONFIG"  # 自动添加默认挂载
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y"          >> "$DEFCONFIG"  # 自动添加BIND挂载
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"                        >> "$DEFCONFIG"  # 启用SUSFS KSTAT支持
+          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n"                    >> "$DEFCONFIG"  # 关闭SUSFS OverlayFS
+          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y"                       >> "$DEFCONFIG"  # 尝试自动卸载
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$DEFCONFIG" # BIND挂载自动卸载
+          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"                      >> "$DEFCONFIG"  # 伪装UNAME
+          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"                       >> "$DEFCONFIG"  # 启用日志
+          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"           >> "$DEFCONFIG"  # 隐藏KSU/SUSFS符号
+          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"      >> "$DEFCONFIG"  # 伪装cmdline/bootconfig
+          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                    >> "$DEFCONFIG"  # 打开重定向支持
+          # 如果启用ZRAM，写入ZRAM相关配置，每项均有注释
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
-            ZRAM_CONFIGS="
-            CONFIG_ZSMALLOC=y
-            CONFIG_CRYPTO_LZ4HC=y
-            CONFIG_CRYPTO_LZ4K=y
-            CONFIG_CRYPTO_LZ4KD=y
-            CONFIG_CRYPTO_842=y
-            CONFIG_CRYPTO_LZ4K_OPLUS=y
-            CONFIG_ZRAM_WRITEBACK=y
-            "
+            echo "# 启用ZRAM及主流压缩算法支持"                 >> "$DEFCONFIG"
+            echo "CONFIG_ZSMALLOC=y   # 启用ZRAM专用内存分配器" >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4HC=y   # LZ4高压缩比算法"    >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4K=y    # LZ4K压缩算法"       >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4KD=y   # LZ4KD压缩算法"      >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_842=y     # 842硬件压缩算法"    >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y   # OPLUS定制LZ4K" >> "$DEFCONFIG"
+            echo "CONFIG_ZRAM_WRITEBACK=y   # 启用ZRAM写回支持" >> "$DEFCONFIG"
           fi
-          {
-            echo ""
-            echo "${SUSFS_CONFIGS}"
-            if [[ -n "$ZRAM_CONFIGS" ]]; then
-              echo ""
-              echo "${ZRAM_CONFIGS}"
-            fi
-          } >> "$DEFCONFIG"
-          sed -i 's/check_defconfig//' ./common/build.config.gki
 
       - name: 注入sched_ext调度模块
         run: |
@@ -324,44 +281,22 @@ jobs:
           cp -r sched_ext/* common/kernel/sched
           rm -rf sched_ext/.git
           cd common/kernel/sched
-
+  
       - name: 编译内核
         run: |
           set -e
           cd kernel_workspace/kernel_platform/common
-          echo ""
-          echo "==== 磁盘空间 ===="
-          df -h
-          echo ""
-          echo "==== 内存信息 ===="
-          free -m
-          echo ""
-          export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
-          export MAKEFLAGS="-j${BUILD_THREADS}"
-          ulimit -v 6000000
           if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" || "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
+            export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:/usr/lib/ccache:$PATH"
             make LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang O=out gki_defconfig
-            make $MAKEFLAGS LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang \
+            make -j$(nproc) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang \
               RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
-              PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole O=out all 2>&1 | tee $GITHUB_WORKSPACE/kernel_build.log
+              PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole O=out all
           else
             cd $GITHUB_WORKSPACE/kernel_workspace
-            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }} 2>&1 | tee $GITHUB_WORKSPACE/kernel_build.log
+            LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           fi
-          echo ""
-          echo "==== 编译结束磁盘空间 ===="
-          df -h
-          echo ""
-          echo "==== 编译结束内存信息 ===="
-          free -m
-          echo ""
-
-      - name: 上传编译日志
-        uses: actions/upload-artifact@v4
-        with:
-          name: kernel_build_log_${{ github.run_id }}
-          path: kernel_build.log
-
+  
       - name: 制作AnyKernel3内核刷机包
         run: |
           set -e
@@ -393,16 +328,16 @@ jobs:
             echo "未找到 Image 文件，构建可能失败"
             exit 1
           fi
-
+ 
       - name: Remove _uv suffix from FEIL
         id: feil_clean
         run: |
           set -e
           clean_feil="${{ github.event.inputs.FEIL }}"
-          clean_feil="${clean_feil%_v}"
-          clean_feil="${clean_feil%_u}"
+          clean_feil="${clean_feil%_v}"  # 去掉结尾的 _v（如果有）
+          clean_feil="${clean_feil%_u}"  # 去掉结尾的 _u（如果有）
           echo "value=$clean_feil" >> $GITHUB_OUTPUT
-
+  
       - name: 上传AnyKernel3 (No_KPM)
         uses: actions/upload-artifact@v4
         with:
@@ -422,32 +357,48 @@ jobs:
           mv oImage Image
           cp Image $GITHUB_WORKSPACE/AnyKernel3-kpm/Image
           cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
-
       - name: 上传AnyKernel3 (KPM)
         uses: actions/upload-artifact@v4
         with:
           name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_KPM
           path: AnyKernel3-kpm/*
 
-      - name: 下载、解压并查找zram内核模块
+      - name: 下载并解压zram内核模块
         if: ${{ github.event.inputs.ZRAM == 'true' }}
         run: |
           set -e
-          URL=$(curl -s https://api.github.com/repos/FurLC/ZRAM-Module/releases/latest | \
-            grep "browser_download_url" | grep "ZRAM-Module-.*\.zip" | cut -d '"' -f 4 | head -1)
-          wget -O ZRAM-Module-${{ github.event.inputs.KERNEL_VERSION }}.zip "$URL"
-          unzip ZRAM-Module-${{ github.event.inputs.KERNEL_VERSION }}.zip -d ZRAM-Module
-          zram_path=$(find ./kernel_workspace -type f -name "zram.ko" -printf '%T@ %s %p\n' | sort -nr | awk '{print $3}' | head -n1)
+          sudo apt install -y unzip
+          curl -s https://api.github.com/repos/FurLC/ZRAM-Module/releases/latest | \
+            grep "browser_download_url" | grep "ZRAM-Module-.*\.zip" | cut -d '"' -f 4 | xargs wget -N
+          unzip "$(ls -t ZRAM-Module-*.zip | head -1)" -d ZRAM-Module
+          zram1="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
+          zram2="./kernel_workspace/kernel_platform/out/dist/"
+          zram3="./kernel_workspace/kernel_platform/out/vendor/oplus/kernel/mm/"
+          zram4="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/vendor_dlkm/"
+          zram5="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/system_dlkm/flatten/lib/modules/"
+          zram6="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/"
+          zram7="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_bsp_hybridswap_zram/"
           target="./ZRAM-Module/zram/zram.ko"
+          for dir in "$zram1" "$zram2" "$zram3" "$zram4" "$zram5" "$zram6" "$zram7"; do
+            zram_path=$(find "$dir" -name "zram.ko" | head -n 1)
+            [ -n "$zram_path" ] && break
+          done
+          if [ -z "$zram_path" ]; then
+            zram_path=$(find "./kernel_workspace" -name "zram.ko" | head -n 1)
+          fi
           if [ -n "$zram_path" ] && [ -f "$zram_path" ]; then
-            echo "zram.ko定位于: $zram_path"
-            cp "$zram_path" "$target"
-            echo "zram.ko hash: $(sha256sum "$target")"
+            echo "ZRAM module file located at: $zram_path"
+            mkdir -p "$(dirname "$target")"
+            if [ "$(realpath "$zram_path")" != "$(realpath "$target")" ]; then
+              cp "$zram_path" "$target"
+            else
+              echo "源文件与目标相同，跳过复制"
+            fi
           else
-            echo "未找到zram.ko文件，构建可能失败"
+            echo "未找到 zram.ko 文件，构建可能失败"
             exit 1
           fi
-
+ 
       - name: 上传ZRAM-Module
         uses: actions/upload-artifact@v4
         if: ${{ github.event.inputs.ZRAM == 'true' }}
