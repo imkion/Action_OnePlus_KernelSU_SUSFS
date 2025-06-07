@@ -111,15 +111,6 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
 
-      - name: 卸载无用包/locale/headers/man/doc
-        run: |
-          sudo apt-get purge -y 'linux-headers-*' 'linux-image-*' 'linux-modules-*' || true
-          sudo apt-get remove -y locales || true
-          sudo apt-get autoremove -y
-          sudo apt-get clean
-          sudo rm -rf /usr/share/man /usr/share/doc /usr/share/info /usr/share/locale* /var/lib/apt/lists/*
-          sudo rm -rf /usr/include/* /usr/lib/locale/* /usr/share/i18n/*
-
       - name: 缓存APT包
         uses: actions/cache@v4
         with:
@@ -230,7 +221,6 @@ jobs:
           PATCHDIR="../susfs4ksu/kernel_patches"
           SUKIPATCH="../SukiSU_patch"
           COMMON="./common"
-          echo "" >> "$COMMON/arch/arm64/configs/gki_defconfig"
           cp $PATCHDIR/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch $COMMON/ 2>/dev/null || true
           mkdir -p $COMMON/fs $COMMON/include/linux $COMMON/lib $COMMON/crypto
           cp $PATCHDIR/fs/* $COMMON/fs/ 2>/dev/null || true
@@ -244,13 +234,12 @@ jobs:
           cd $COMMON
           SUSFS_PATCH="50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch"
           if [[ -f "$SUSFS_PATCH" ]]; then
-            if [[ "${{ github.event.inputs.FEIL }}" != "oneplus_13t" ]]; then
+            if [[ "${{ github.event.inputs.FEIL }}" != "6.1" ]]; then
               sed -i 's/-32,12 +32,38/-32,11 +32,37/g' "$SUSFS_PATCH"
               sed -i '/#include <trace\/hooks\/fs.h>/d' "$SUSFS_PATCH"
             fi
             patch -p1 < "$SUSFS_PATCH" || true
           fi
-          echo "" >> "$COMMON/arch/arm64/configs/gki_defconfig"
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           patch -p1 -F 3 < syscall_hooks.patch || true
           patch -p1 -F 3 < ogki2gki_c99fix.patch
