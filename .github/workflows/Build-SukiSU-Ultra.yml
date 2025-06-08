@@ -263,8 +263,8 @@ jobs:
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                    >> "$DEFCONFIG"  # 打开重定向支持
           # 如果启用ZRAM，写入ZRAM相关配置，每项均有注释
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
-            echo "# 启用ZRAM及主流压缩算法支持"                 >> "$DEFCONFIG"
-            # echo "CONFIG_ZSMALLOC=y   # 启用ZRAM专用内存分配器" >> "$DEFCONFIG"
+            # 启用ZRAM及主流压缩算法支持"
+            echo "CONFIG_ZSMALLOC=y   # 启用ZRAM专用内存分配器" >> "$DEFCONFIG"
             # echo "CONFIG_CRYPTO_LZ4HC=y   # LZ4高压缩比算法"    >> "$DEFCONFIG"
             # echo "CONFIG_CRYPTO_LZ4K=y    # LZ4K压缩算法"       >> "$DEFCONFIG"
             echo "CONFIG_CRYPTO_LZ4KD=y   # LZ4KD压缩算法"      >> "$DEFCONFIG"
