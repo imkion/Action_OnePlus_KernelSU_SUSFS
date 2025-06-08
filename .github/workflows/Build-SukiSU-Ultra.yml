@@ -267,10 +267,10 @@ jobs:
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
             # 启用ZRAM及主流压缩算法支持"
             # echo "CONFIG_ZSMALLOC=y   # 启用ZRAM专用内存分配器" >> "$DEFCONFIG"
-            # echo "CONFIG_CRYPTO_LZ4HC=y   # LZ4高压缩比算法"    >> "$DEFCONFIG"
-            # echo "CONFIG_CRYPTO_LZ4K=y    # LZ4K压缩算法"       >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4HC=y   # LZ4高压缩比算法"    >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_LZ4K=y    # LZ4K压缩算法"       >> "$DEFCONFIG"
             echo "CONFIG_CRYPTO_LZ4KD=y   # LZ4KD压缩算法"      >> "$DEFCONFIG"
-            # echo "CONFIG_CRYPTO_842=y     # 842硬件压缩算法"    >> "$DEFCONFIG"
+            echo "CONFIG_CRYPTO_842=y     # 842硬件压缩算法"    >> "$DEFCONFIG"
             echo "CONFIG_CRYPTO_LZ4K_OPLUS=y   # OPLUS定制LZ4K" >> "$DEFCONFIG"
             # echo "CONFIG_ZRAM_WRITEBACK=y   # 启用ZRAM写回支持" >> "$DEFCONFIG"
           fi
