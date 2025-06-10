@@ -82,6 +82,10 @@ on:
         options:
           - gki
           - perf
+      KERNEL_NAME:
+        description: "内核后缀名"
+        required: false
+        default: '-FurLC'
       ZRAM:
         description: "是否启用更多ZRAM（推荐开启）"
         type: boolean
@@ -164,7 +168,7 @@ jobs:
           for script in kernel_platform/common/scripts/setlocalversion kernel_platform/msm-kernel/scripts/setlocalversion kernel_platform/external/dtc/scripts/setlocalversion; do
             sed -i 's/ -dirty//g' "$script"
             sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$script"
-            sed -i '$s|echo "\$res"|echo "-FurLC"|' "$script"
+            sed -i '$s|echo "\$res"|echo "${{ github.event.inputs.KERNEL_NAME }}"|' "$script"
           done
   
       - name: 注入KernelSU-SukiSU Ultra
