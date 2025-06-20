@@ -270,7 +270,7 @@ jobs:
           # 如果启用ZRAM，写入ZRAM相关配置
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
             # 启用ZRAM及主流压缩算法支持"
-            if [[ "${{ github.event.inputs.KERNEL_VERSION }}" != "5.10" && "${{ github.event.inputs.KERNEL_VERSION }}" != "5.15" ]]; then
+            if [[ "${{ github.event.inputs.KERNEL_VERSION }}" != "5.10" || "${{ github.event.inputs.KERNEL_VERSION }}" != "5.15" ]]; then
               echo "CONFIG_ZSMALLOC=y   # 启用ZRAM专用内存分配器" >> "$DEFCONFIG"
               echo "CONFIG_CRYPTO_LZ4HC=y   # LZ4高压缩比算法"    >> "$DEFCONFIG"
               echo "CONFIG_CRYPTO_LZ4K=y    # LZ4K压缩算法"       >> "$DEFCONFIG"
