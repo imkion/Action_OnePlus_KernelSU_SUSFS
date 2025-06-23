@@ -183,6 +183,7 @@ jobs:
   
       - name: 设置susfs并应用主补丁
         run: |
+          set -e
           # 下载相关内容
           cd kernel_workspace
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git \
@@ -223,6 +224,7 @@ jobs:
  
       - name: 应用zram相关补丁
         run: |
+          set -e
           cd kernel_workspace/kernel_platform/common
           PATCH_LIST=(
             "lz4kd"
