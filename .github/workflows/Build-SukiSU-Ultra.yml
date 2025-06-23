@@ -208,13 +208,14 @@ jobs:
           fi
           
           cd ./common/
-          if [[ "${{ github.event.inputs.FEIL }}" != "oneplus_13t" ]]; then
+          PATCH_FILE=50_add_susfs_in_gki-${{ inputs.ANDROID_VERSION }}-${{ inputs.KERNEL_VERSION }}.patch
+          if [[ -f "$PATCH_FILE" ]]; then
             sed -i 's/-32,12 +32,38/-32,11 +32,37/g' "$SUSFS_PATCH"
             sed -i '/#include <trace\/hooks\/fs.h>/d' "$SUSFS_PATCH"
+            patch -p1 < "$PATCH_FILE" || true
           fi
           # 应用susfs补丁
-          patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
-          cp ../../kernel_patches/69_hide_stuff.patch ./
+          cp ../../SukiSU_patch/69_hide_stuff.patch ./
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           patch -p1 -F 3 < syscall_hooks.patch || true
           patch -p1 -F 3 < 69_hide_stuff.patch
