@@ -193,7 +193,8 @@ jobs:
           # 添加susfs补丁
           cd kernel_platform
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
-          cp ../kernel_patches/next/syscall_hooks.patch ./common/
+          cp ../kernel_patches/hooks/syscall_hooks.patch ./common/
+          cp ../../SukiSU_patch/69_hide_stuff.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
           # 添加oki补丁
@@ -215,8 +216,6 @@ jobs:
             patch -p1 < "$PATCH_FILE" || true
           fi
           # 应用susfs补丁
-          cp ../../SukiSU_patch/69_hide_stuff.patch ./
-          cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           patch -p1 -F 3 < syscall_hooks.patch || true
           patch -p1 -F 3 < 69_hide_stuff.patch
           patch -p1 -F 3 < ogki2gki_c99fix.patch
