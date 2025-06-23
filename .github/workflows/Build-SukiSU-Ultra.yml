@@ -183,44 +183,46 @@ jobs:
   
       - name: 设置susfs并应用主补丁
         run: |
-          set -e
+          # 下载相关内容
           cd kernel_workspace
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git \
             -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone --depth=1 https://github.com/SukiSU-Ultra/SukiSU_patch.git
           wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 3 https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki.patch
           wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 3 https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki_c99fix.patch
+          # 添加susfs补丁
           cd kernel_platform
-          PATCHDIR="../susfs4ksu/kernel_patches"
-          SUKIPATCH="../SukiSU_patch"
-          COMMON="./common"
-          cp $PATCHDIR/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch $COMMON/ 2>/dev/null || true
-          mkdir -p $COMMON/fs $COMMON/include/linux $COMMON/lib $COMMON/crypto
-          cp $PATCHDIR/fs/* $COMMON/fs/ 2>/dev/null || true
-          cp $PATCHDIR/include/linux/* $COMMON/include/linux/ 2>/dev/null || true
-          cp -r $SUKIPATCH/other/zram/lz4k/include/linux/* $COMMON/include/linux/ 2>/dev/null || true
-          cp -r $SUKIPATCH/other/zram/lz4k/lib/* $COMMON/lib/ 2>/dev/null || true
-          cp -r $SUKIPATCH/other/zram/lz4k/crypto/* $COMMON/crypto/ 2>/dev/null || true
-          cp -r $SUKIPATCH/other/zram/lz4k_oplus $COMMON/lib/ 2>/dev/null || true
-          cp ../ogki2gki.patch $COMMON/
-          cp ../ogki2gki_c99fix.patch $COMMON/
-          cd $COMMON
-          SUSFS_PATCH="50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch"
-          if [[ -f "$SUSFS_PATCH" ]]; then
-            if [[ "${{ github.event.inputs.FEIL }}" != "oneplus_13t" ]]; then
-              sed -i 's/-32,12 +32,38/-32,11 +32,37/g' "$SUSFS_PATCH"
-              sed -i '/#include <trace\/hooks\/fs.h>/d' "$SUSFS_PATCH"
-            fi
-            patch -p1 < "$SUSFS_PATCH" || true
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
+          cp ../kernel_patches/next/syscall_hooks.patch ./common/
+          cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
+          cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
+          # 添加oki补丁
+          cp ../ogki2gki.patch ./common/
+          cp ../ogki2gki_c99fix.patch ./common/
+          # 添加zram补丁
+          if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
+            cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux
+            cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib
+            cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./common/crypto
+            cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./common/lib/
           fi
+          
+          cd ./common/
+          if [[ "${{ github.event.inputs.FEIL }}" != "oneplus_13t" ]]; then
+            sed -i 's/-32,12 +32,38/-32,11 +32,37/g' "$SUSFS_PATCH"
+            sed -i '/#include <trace\/hooks\/fs.h>/d' "$SUSFS_PATCH"
+          fi
+          # 应用susfs补丁
+          patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
+          cp ../../kernel_patches/69_hide_stuff.patch ./
           cp ../../SukiSU_patch/hooks/syscall_hooks.patch ./
           patch -p1 -F 3 < syscall_hooks.patch || true
+          patch -p1 -F 3 < 69_hide_stuff.patch
           patch -p1 -F 3 < ogki2gki_c99fix.patch
           echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
  
       - name: 应用zram相关补丁
         run: |
-          set -e
           cd kernel_workspace/kernel_platform/common
           PATCH_LIST=(
             "lz4kd"
