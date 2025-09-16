@@ -25,11 +25,11 @@ jobs:
         run: |
           > feil_options.txt
           while read branch; do
-            # 拉取分支下根目录所有文件
-            files=$(curl -s "https://api.github.com/repos/OnePlusOSS/kernel_manifest/contents?ref=$branch" | jq -r '.[] | select(.name | endswith(".xml")) | .name')
+            files=$(curl -s "https://api.github.com/repos/OnePlusOSS/kernel_manifest/git/trees/$branch?recursive=1" \
+              | jq -r '.tree[] | select(.path | endswith(".xml")) | .path' \
+              | sed 's/.*\///;s/\.xml$//')
             for f in $files; do
-              name="${f%.xml}"
-              echo "$name" >> feil_options.txt
+              echo "$f" >> feil_options.txt
             done
           done < branch_list.txt
           # 去重排序
