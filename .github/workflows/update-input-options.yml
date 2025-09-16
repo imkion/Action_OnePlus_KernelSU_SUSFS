@@ -44,19 +44,21 @@ jobs:
         run: |
           set -Eeuo pipefail
           echo -n > xml_names.txt
+          # NOTE: read from branches_full.txt (all branches), not from cpu_list.txt
           while read -r branch; do
             ref_enc=${branch//\//%2F}
             api="https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1"
             resp=$(curl -sS -H "Accept: application/vnd.github+json" "$api" || true)
             if echo "$resp" | jq -e '.tree' >/dev/null; then
               echo "$resp" \
-                | jq -r '.tree[] 
-                    | select(.type=="blob" and (.path|endswith(".xml"))) 
+                | jq -r '.tree[]
+                    | select(.type=="blob" and (.path|endswith(".xml")))
                     | .path' \
-                | sed -E 's#.*/##;s/\.xml$//' >> xml_names.txt
+                | sed -E 's#.*/##;s/\.xml$//' \
+                >> xml_names.txt
             fi
             sleep 0.2
-          done < cpu_list.txt
+          done < branches_full.txt
           sort -u xml_names.txt -o xml_names.txt
 
       - name: Patch workflow_dispatch inputs
