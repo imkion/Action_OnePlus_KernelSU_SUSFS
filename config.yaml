@@ -1,0 +1,6 @@
+FEIL:
+  description: "配置文件"
+  type: choice
+  required: true
+  default: oneplus_ace3_v
+  options:
