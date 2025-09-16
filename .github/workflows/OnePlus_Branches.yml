@@ -1,8 +1,0 @@
-jobs:
-  get-remote-branches:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 获取 OnePlusOSS/kernel_manifest 的分支名
-        run: |
-          git ls-remote --heads https://github.com/OnePlusOSS/kernel_manifest.git | awk -F'/' '{print $NF}' > oneplus_branches.txt
-          cat oneplus_branches.txt
