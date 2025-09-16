@@ -43,16 +43,22 @@ jobs:
 
           # FEIL → 所有 xml 源自每个分支
           : > xml_names.txt
-          while read -r b; do
-            ref=${b//\//%2F}
+          while read -r branch; do
+            ref=${branch//\//%2F}
             api="https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref}?recursive=1"
             resp=$(curl -sS \
               -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
               -H "Accept: application/vnd.github+json" \
               "$api" || true)
+
+            # 用 guard 阻止非 string 或 null 导致 endswith 错误
             echo "$resp" \
-              | jq -r '.tree[]? | select(.type=="blob" and .path|endswith(".xml")) | .path' \
-              | xargs -n1 basename -s .xml >> xml_names.txt
+              | jq -r '(.tree // [])[]
+                       | select(.type=="blob" and (.path|strings|endswith(".xml")))
+                       | .path' \
+              | sed -E 's#.*/##; s/\.xml$//' \
+              >> xml_names.txt
+
             sleep 0.2
           done < branches.txt
           sort -u xml_names.txt -o xml_names.txt
@@ -61,24 +67,19 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          # 针对 CPU 和 FEIL 两个输入逐一更新 options 与 default
           for NAME in CPU FEIL; do
-            FILE_VAR="${NAME,,}_list.txt"
-            # 初始化 options
+            LIST_VAR="${NAME,,}_list.txt"
             yq -i ".on.workflow_dispatch.inputs.${NAME}.options = []" "$WF_FILE"
+            [ -s "$LIST_VAR" ] || continue
+            while read -r v; do
+              yq -i ".on.workflow_dispatch.inputs.${NAME}.options += [\"$v\"]" "$WF_FILE"
+            done < "$LIST_VAR"
 
-            # 填充列表
-            if [ -s "$FILE_VAR" ]; then
-              while read -r v; do
-                yq -i ".on.workflow_dispatch.inputs.${NAME}.options += [\"$v\"]" "$WF_FILE"
-              done < "$FILE_VAR"
-            fi
-
-            # 校验并修正 default
+            # 校验 default
             DEF_PATH=".on.workflow_dispatch.inputs.${NAME}.default"
-            CURRENT=$(yq -r "${DEF_PATH} // \"\"" "$WF_FILE")
-            if ! grep -qxF "$CURRENT" "$FILE_VAR"; then
-              NEW=$(head -n1 "$FILE_VAR")
+            CUR=$(yq -r "${DEF_PATH} // \"\"" "$WF_FILE")
+            if ! grep -qxF "$CUR" "$LIST_VAR"; then
+              NEW=$(head -n1 "$LIST_VAR")
               [ -n "$NEW" ] && yq -i "${DEF_PATH} = \"${NEW}\"" "$WF_FILE"
             fi
           done
@@ -88,7 +89,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           if git diff --quiet; then
-            echo "No changes to commit."
+            echo "No changes."
             exit 0
           fi
           git config user.name "github-actions[bot]"
