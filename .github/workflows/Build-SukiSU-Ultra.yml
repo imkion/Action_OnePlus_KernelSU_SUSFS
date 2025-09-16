@@ -1,5 +1,4 @@
 name: Build SukiSU Ultra
-
 on:
   workflow_dispatch:
     inputs:
@@ -9,18 +8,20 @@ on:
         required: true
         default: sm8550
         options:
+          - sm6375
           - sm7550
           - sm7675
           - sm8450
           - sm8475
           - sm8550
+          - sm8635
           - sm8650
           - sm8750
       FEIL:
         description: "配置文件"
         type: choice
         required: true
-        default: oneplus_ace3_v
+        default: ""
         options:
           - oneplus_nord_ce4_v
           - oneplus_ace_3v_v
@@ -91,7 +92,6 @@ on:
         type: boolean
         required: true
         default: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -111,18 +111,13 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
-
-  
       - name: 安装编译依赖
         run: |
           set -e
           sudo apt update
           sudo apt install -y python3 git curl ccache unzip libelf-dev lld llvm clang llvm-dev
-   
       - name: 检出仓库
         uses: actions/checkout@v4
-
-   
       - name: 下载manifest并生成ccache哈希
         id: manifest_hash
         run: |
@@ -131,7 +126,6 @@ jobs:
           curl --retry 3 -LSs "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/refs/heads/oneplus/${{ github.event.inputs.CPU }}/${{ github.event.inputs.FEIL }}.xml" \
             -o kernel_workspace/${{ github.event.inputs.FEIL }}.xml
           echo "hash=$(sha256sum kernel_workspace/${{ github.event.inputs.FEIL }}.xml | awk '{print $1}')" >> $GITHUB_OUTPUT
-  
       - name: 恢复ccache缓存
         uses: actions/cache@v3
         with:
@@ -139,20 +133,17 @@ jobs:
           key: ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.KERNEL_VERSION }}-${{ steps.manifest_hash.outputs.hash }}
           restore-keys: |
             ccache-${{ runner.os }}-${{ github.event.inputs.CPU }}-
-   
       - name: 配置Git信息
         run: |
           set -e
           git config --global user.name "FurLC"
           git config --global user.email "qq441791056@163.com"
-  
       - name: 安装repo工具
         run: |
           set -e
           curl --retry 3 https://storage.googleapis.com/git-repo-downloads/repo > ~/repo
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
-  
       - name: 初始化repo并同步源码
         run: |
           set -e
@@ -170,7 +161,6 @@ jobs:
             sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$script"
             sed -i '$s|echo "\$res"|echo "${{ github.event.inputs.KERNEL_NAME }}"|' "$script"
           done
-  
       - name: 注入KernelSU-SukiSU Ultra
         run: |
           set -e
@@ -180,7 +170,6 @@ jobs:
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10606)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
           sed -i "s/DKSU_VERSION=12800/DKSU_VERSION=${KSU_VERSION}/" kernel/Makefile
-  
       - name: 设置susfs并应用主补丁
         run: |
           set -e
@@ -208,7 +197,7 @@ jobs:
             cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./common/crypto
             cp -r ../SukiSU_patch/other/zram/lz4k_oplus ./common/lib/
           fi
-          
+
           cd ./common/
           PATCH_FILE=50_add_susfs_in_gki-${{ inputs.ANDROID_VERSION }}-${{ inputs.KERNEL_VERSION }}.patch
           if [[ -f "$PATCH_FILE" ]]; then
@@ -221,34 +210,14 @@ jobs:
           patch -p1 -F 3 < 69_hide_stuff.patch
           patch -p1 -F 3 < ogki2gki_c99fix.patch
           echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
- 
       - name: 应用zram相关补丁
-        run: |
-          set -e
-          cd kernel_workspace/kernel_platform/common
-          PATCH_LIST=(
-            "lz4kd"
-            "lz4k_oplus"
-          )
-          PATCH_BASE=../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}
-          for PATCH_NAME in "${PATCH_LIST[@]}"; do
-            PATCH_FILE="$PATCH_BASE/$PATCH_NAME.patch"
-            LOCAL_PATCH="./$PATCH_NAME.patch"
-            if [[ -f "$PATCH_FILE" ]]; then
-              echo "🟢 应用补丁: $PATCH_NAME"
-              cp "$PATCH_FILE" "$LOCAL_PATCH"
-              patch -p1 -F 3 < "$LOCAL_PATCH" || echo "⚠️ $PATCH_NAME patch失败(已应用/冲突可忽略)"
-            else
-              echo "❗ 未找到$PATCH_NAME补丁 (kernel version ${{ github.event.inputs.KERNEL_VERSION }})"
-            fi
-          done
- 
+        run: "set -e\ncd kernel_workspace/kernel_platform/common\nPATCH_LIST=(\n  \"lz4kd\"\n  \"lz4k_oplus\"\n)\nPATCH_BASE=../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}\nfor PATCH_NAME in \"${PATCH_LIST[@]}\"; do\n  PATCH_FILE=\"$PATCH_BASE/$PATCH_NAME.patch\"\n  LOCAL_PATCH=\"./$PATCH_NAME.patch\"\n  if [[ -f \"$PATCH_FILE\" ]]; then\n    echo \"\U0001F7E2 应用补丁: $PATCH_NAME\"\n    cp \"$PATCH_FILE\" \"$LOCAL_PATCH\"\n    patch -p1 -F 3 < \"$LOCAL_PATCH\" || echo \"⚠️ $PATCH_NAME patch失败(已应用/冲突可忽略)\"\n  else\n    echo \"❗ 未找到$PATCH_NAME补丁 (kernel version ${{ github.event.inputs.KERNEL_VERSION }})\"\n  fi\ndone\n"
       - name: 写入SUSFS与ZRAM内核配置及性能优化
         run: |
           set -e
           cd kernel_workspace/kernel_platform
           DEFCONFIG=./common/arch/arm64/configs/gki_defconfig
-          
+
           # SUSFS/KSU 基础配置
           echo "# SUSFS/KSU基础配置"                                  >> "$DEFCONFIG"
           echo "CONFIG_KSU=y"                                        >> "$DEFCONFIG"  # 启用KernelSU
@@ -270,7 +239,7 @@ jobs:
           echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"           >> "$DEFCONFIG"  # 隐藏KSU/SUSFS符号
           echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"      >> "$DEFCONFIG"  # 伪装cmdline/bootconfig
           echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                    >> "$DEFCONFIG"  # 打开重定向支持
-         
+
           # 如果启用ZRAM，写入ZRAM相关配置
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
             # 启用ZRAM压缩算法支持
@@ -278,10 +247,9 @@ jobs:
             echo "CONFIG_CRYPTO_LZ4K_OPLUS=y" >> "$DEFCONFIG"  # OPLUS定制LZ4K
             echo "CONFIG_ZRAM_WRITEBACK=y"    >> "$DEFCONFIG"  # 启用ZRAM写回支持
           fi
-          
+
           # 删除check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
-
       - name: 注入sched_ext调度模块
         if: ${{ github.event.inputs.KERNEL_VERSION == '6.6' }}
         run: |
@@ -291,7 +259,6 @@ jobs:
           cp -r sched_ext/* common/kernel/sched
           rm -rf sched_ext/.git
           cd common/kernel/sched
-  
       - name: 编译内核
         run: |
           set -e
@@ -308,7 +275,6 @@ jobs:
             cd $GITHUB_WORKSPACE/kernel_workspace
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           fi
-  
       - name: 制作AnyKernel3内核刷机包
         run: |
           set -e
@@ -340,7 +306,6 @@ jobs:
             echo "未找到 Image 文件，构建可能失败"
             exit 1
           fi
- 
       - name: Remove _uv suffix from FEIL
         id: feil_clean
         run: |
@@ -349,13 +314,11 @@ jobs:
           clean_feil="${clean_feil%_v}"  # 去掉结尾的 _v（如果有）
           clean_feil="${clean_feil%_u}"  # 去掉结尾的 _u（如果有）
           echo "value=$clean_feil" >> $GITHUB_OUTPUT
-  
       - name: 上传AnyKernel3 (No_KPM)
         uses: actions/upload-artifact@v4
         with:
           name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_NoKPM
           path: AnyKernel3-no_kpm/*
-
       - name: 应用KPM补丁并制作KPM刷机包
         run: |
           set -e
@@ -374,7 +337,6 @@ jobs:
         with:
           name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_KPM
           path: AnyKernel3-kpm/*
-
       - name: 下载并解压zram内核模块
         if: ${{ github.event.inputs.ZRAM == 'true' }}
         run: |
@@ -410,7 +372,6 @@ jobs:
             echo "未找到 zram.ko 文件，构建可能失败"
             exit 1
           fi
- 
       - name: 上传ZRAM-Module
         uses: actions/upload-artifact@v4
         if: ${{ github.event.inputs.ZRAM == 'true' }}
