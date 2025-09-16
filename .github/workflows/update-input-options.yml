@@ -2,7 +2,7 @@ name: Auto-update CPU/FEIL options
 
 on:
   schedule:
-    - cron: "12 3 * * *"
+    - cron: "0 0 * * *"
   workflow_dispatch:
 
 permissions:
@@ -14,14 +14,16 @@ jobs:
     env:
       UPSTREAM_REPO: OnePlusOSS/kernel_manifest
       WORKFLOW_FILE: .github/workflows/Build-SukiSU-Ultra.yml
+      GH_PAT: ${{ secrets.PAT_TOKEN }}    # 从仓库 Secrets 中读取
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repository with PAT
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
 
-      - name: Install dependencies
+      - name: Install jq & yq
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq curl
@@ -34,9 +36,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           git ls-remote --heads https://github.com/${UPSTREAM_REPO}.git \
-            | awk '{print $2}' | sed 's#refs/heads/##' > branches_full.txt
-          awk -F/ '{print $NF}' branches_full.txt \
-            | grep -E '^sm[0-9]+' | sort -u > cpu_list.txt
+            | awk '{print $2}' | sed 's#refs/heads/##' \
+            | awk -F/ '{print $NF}' | grep -E '^sm[0-9]+' | sort -u > cpu_list.txt
 
       - name: Collect .xml basenames → FEIL list
         shell: bash
@@ -49,31 +50,27 @@ jobs:
             resp=$(curl -sS -H "Accept: application/vnd.github+json" "$api" || true)
             if echo "$resp" | jq -e '.tree' >/dev/null; then
               echo "$resp" \
-                | jq -r '.tree[]
-                    | select(.type=="blob" and (.path|endswith(".xml")))
+                | jq -r '.tree[] 
+                    | select(.type=="blob" and (.path|endswith(".xml"))) 
                     | .path' \
-                | sed -E 's#.*/##;s/\.xml$//' \
-                >> xml_names.txt
+                | sed -E 's#.*/##;s/\.xml$//' >> xml_names.txt
             fi
             sleep 0.2
-          done < branches_full.txt
+          done < cpu_list.txt
           sort -u xml_names.txt -o xml_names.txt
 
-      - name: Update CPU.options
+      - name: Patch workflow_dispatch inputs
         shell: bash
         run: |
           set -Eeuo pipefail
+          # CPU options
           if [ -s cpu_list.txt ]; then
             yq -i '.on.workflow_dispatch.inputs.CPU.options = []' "${WORKFLOW_FILE}"
             while read -r soc; do
               yq -i ".on.workflow_dispatch.inputs.CPU.options += [\"$soc\"]" "${WORKFLOW_FILE}"
             done < cpu_list.txt
           fi
-
-      - name: Update FEIL.options
-        shell: bash
-        run: |
-          set -Eeuo pipefail
+          # FEIL options
           if [ -s xml_names.txt ]; then
             yq -i '.on.workflow_dispatch.inputs.FEIL.options = []' "${WORKFLOW_FILE}"
             while read -r name; do
@@ -92,12 +89,16 @@ jobs:
           grep -qxF "$def_feil" xml_names.txt || \
             yq -i ".on.workflow_dispatch.inputs.FEIL.default = \"$(head -n1 xml_names.txt)\"" "${WORKFLOW_FILE}"
 
-      - name: Create pull request with updates
-        uses: peter-evans/create-pull-request@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore: auto-update CPU and FEIL options"
-          branch: update-options-${{ github.run_id }}
-          title: "chore: auto-update CPU and FEIL options from ${UPSTREAM_REPO}"
-          labels: automated
-          paths: .github/workflows/Build-SukiSU-Ultra.yml
+      - name: Commit & push changes back to main
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # 配置提交者信息
+          git config user.name "FurLC"
+          git config user.email "qq441791056@163.com"
+          # 仅在有改动时提交
+          git add "${WORKFLOW_FILE}"
+          git diff --cached --quiet || git commit -m "chore: auto-update CPU and FEIL options"
+          # 使用 PAT 绕过 GITHUB_TOKEN 写入 workflow 的限制
+          git remote set-url origin https://${GH_PAT}@github.com/${{ github.repository }}
+          git push origin HEAD:main
