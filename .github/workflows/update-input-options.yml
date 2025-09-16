@@ -1,0 +1,142 @@
+name: Auto-update CPU/FEIL options
+
+on:
+  schedule:
+    - cron: "12 3 * * *" # 每天 UTC 03:12 运行，可按需调整
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-options:
+    runs-on: ubuntu-latest
+
+    env:
+      WF_FILE: "Action_OnePlus_KernelSU_SUSFS/.github/workflows/Build-SukiSU-Ultra.yml"
+      UPSTREAM_REPO: "OnePlusOSS/kernel_manifest"
+
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Install jq and yq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          sudo curl -fsSL -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+          jq --version
+
+      - name: Fetch upstream branches -> CPU list
+        run: |
+          set -euo pipefail
+          git ls-remote --heads "https://github.com/${UPSTREAM_REPO}.git" \
+            | awk -F'/' '{print $NF}' > branches.txt
+
+          # 提取 smXXXX（去掉前缀 oneplus/），并去重、排序
+          sed -n 's#.*/##p' branches.txt | grep -E '^sm[0-9]+' | sort -u > cpu_list.txt
+
+          echo "CPU candidates:"
+          cat cpu_list.txt || true
+
+      - name: Collect all .xml basenames from all branches -> FEIL list
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          : > xml_names.txt
+
+          while read -r branch; do
+            ref_enc="${branch//\//%2F}"
+            api="https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1"
+
+            resp="$(curl -sS -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                           -H "Accept: application/vnd.github+json" \
+                           "$api")"
+
+            # 仅取 type=blob 且以 .xml 结尾的路径，输出为不带路径且去掉 .xml 的文件名
+            echo "$resp" \
+              | jq -r '(.tree // [])[] | select(.type=="blob" and (.path|endswith(".xml"))) | .path' \
+              | sed -E 's#.*/##; s/\.xml$//' \
+              >> xml_names.txt || true
+
+            # 降低 API 压力
+            sleep 0.3
+          done < branches.txt
+
+          sort -u xml_names.txt -o xml_names.txt
+
+          echo "FEIL candidates (xml without extension):"
+          head -n 50 xml_names.txt || true
+          echo "... total $(wc -l < xml_names.txt) entries"
+
+      - name: Update CPU.options in Build-SukiSU-Ultra.yml
+        run: |
+          set -euo pipefail
+          test -f "$WF_FILE" || { echo "Workflow file not found: $WF_FILE"; exit 1; }
+
+          if yq -e '.on.workflow_dispatch.inputs.CPU' "$WF_FILE" >/dev/null 2>&1; then
+            yq -i '.on.workflow_dispatch.inputs.CPU.options = []' "$WF_FILE"
+            while read -r soc; do
+              [ -n "$soc" ] && yq -i ".on.workflow_dispatch.inputs.CPU.options += [\"${soc}\"]" "$WF_FILE"
+            done < cpu_list.txt
+
+            echo "Updated CPU.options:"
+            yq '.on.workflow_dispatch.inputs.CPU.options' "$WF_FILE" || true
+          else
+            echo "CPU input not found in $WF_FILE, skipped."
+          fi
+
+      - name: Update FEIL.options in Build-SukiSU-Ultra.yml
+        run: |
+          set -euo pipefail
+          if yq -e '.on.workflow_dispatch.inputs.FEIL' "$WF_FILE" >/dev/null 2>&1; then
+            yq -i '.on.workflow_dispatch.inputs.FEIL.options = []' "$WF_FILE"
+            while read -r name; do
+              [ -n "$name" ] && yq -i ".on.workflow_dispatch.inputs.FEIL.options += [\"${name}\"]" "$WF_FILE"
+            done < xml_names.txt
+
+            echo "Updated FEIL.options:"
+            yq '.on.workflow_dispatch.inputs.FEIL.options' "$WF_FILE" || true
+          else
+            echo "FEIL input not found in $WF_FILE, skipped."
+          fi
+
+      - name: Ensure defaults are valid (optional but recommended)
+        run: |
+          set -euo pipefail
+
+          # CPU default
+          cpu_default="$(yq -r '.on.workflow_dispatch.inputs.CPU.default // ""' "$WF_FILE")"
+          if [ -n "$cpu_default" ] && ! grep -qx "$cpu_default" cpu_list.txt; then
+            new_default="$(head -n1 cpu_list.txt || true)"
+            if [ -n "$new_default" ]; then
+              echo "Adjust CPU.default -> $new_default (was $cpu_default)"
+              yq -i ".on.workflow_dispatch.inputs.CPU.default = \"$new_default\"" "$WF_FILE"
+            fi
+          fi
+
+          # FEIL default
+          feil_default="$(yq -r '.on.workflow_dispatch.inputs.FEIL.default // ""' "$WF_FILE")"
+          if [ -n "$feil_default" ] && ! grep -qx "$feil_default" xml_names.txt; then
+            new_default="$(head -n1 xml_names.txt || true)"
+            if [ -n "$new_default" ]; then
+              echo "Adjust FEIL.default -> $new_default (was $feil_default)"
+              yq -i ".on.workflow_dispatch.inputs.FEIL.default = \"$new_default\"" "$WF_FILE"
+            fi
+          fi
+
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+          if git status --porcelain | grep -q .; then
+            git config user.name "FurLC"
+            git config user.email "qq441791056@163.com"
+            git add "$WF_FILE"
+            git commit -m "chore: auto-update CPU and FEIL options from ${UPSTREAM_REPO}"
+            git push
+          else
+            echo "No changes to commit."
+          fi
