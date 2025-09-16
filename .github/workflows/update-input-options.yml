@@ -2,11 +2,11 @@ name: Auto-update CPU/FEIL options
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 0 * * *"  # 每天 UTC 03:12 运行
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write    # 用于读写工作流外的文件
 
 jobs:
   update-options:
@@ -17,133 +17,95 @@ jobs:
       UPSTREAM_REPO: "OnePlusOSS/kernel_manifest"
 
     steps:
-      - name: Checkout this repo
+      - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install jq and yq
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq
-          sudo curl -fsSL -o /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo curl -fsSL -o /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
-          yq --version
-          jq --version
 
-      - name: Fetch upstream branches (full and tail) -> CPU list
+      - name: Fetch upstream branches -> CPU list
         shell: bash
         run: |
           set -Eeuo pipefail
-          # 取出完整分支名（可能含 oneplus/ 前缀）
-          git ls-remote --heads "https://github.com/${UPSTREAM_REPO}.git" \
+          # 完整分支名
+          git ls-remote --heads https://github.com/${UPSTREAM_REPO}.git \
             | awk '{print $2}' | sed 's#refs/heads/##' > branches_full.txt
+          # 取尾部 smXXXX
+          awk -F'/' '{print $NF}' branches_full.txt \
+            | awk '/^sm[0-9]+$/' | sort -u > cpu_list.txt
 
-          # CPU 列表取分支最后一段，并筛选 sm 开头
-          awk -F'/' '{print $NF}' branches_full.txt | awk '/^sm[0-9]+$/' | sort -u > cpu_list.txt
-
-          echo "CPU candidates ($(wc -l < cpu_list.txt)):"
-          cat cpu_list.txt || true
-
-      - name: Collect all .xml basenames from all full branches -> FEIL list
+      - name: Collect .xml basenames -> FEIL list
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -Eeuo pipefail
           : > xml_names.txt
-
           while read -r full_branch; do
-            # 对 oneplus/smXXXX 做 URL 编码
-            ref_enc="${full_branch//\//%2F}"
-            api="https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1"
-
-            if [ -n "${GITHUB_TOKEN:-}" ]; then
-              resp="$(curl -sS -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                               -H "Accept: application/vnd.github+json" \
-                               "$api" || true)"
-            else
-              resp="$(curl -sS -H "Accept: application/vnd.github+json" "$api" || true)"
-            fi
-
-            # 仅当有 tree 时处理
+            ref_enc=${full_branch//\//%2F}
+            api=https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1
+            resp=$(curl -sS -H "Accept: application/vnd.github+json" "$api" || true)
+            # 只有当 resp.tree 存在时才处理
             if echo "$resp" | jq -e '.tree' >/dev/null 2>&1; then
               echo "$resp" \
-                | jq -r '.tree[] | select(.type=="blob" and (.path|endswith(".xml"))) | .path' \
-                | sed -E 's#.*/##; s/\.xml$//' \
-                >> xml_names.txt || true
-            else
-              echo "Skip $full_branch: no tree (maybe 404 or rate limit)" >&2
+                | jq -r '.tree[] | select(.type=="blob" and endswith(.path; ".xml")) | .path' \
+                | sed -E 's#.*/##;s/\.xml$//' \
+                >> xml_names.txt
             fi
-
             sleep 0.2
           done < branches_full.txt
-
           sort -u xml_names.txt -o xml_names.txt
-
-          echo "FEIL candidates (xml without .xml) total $(wc -l < xml_names.txt):"
-          head -n 50 xml_names.txt || true
 
       - name: Update CPU.options in Build-SukiSU-Ultra.yml
         shell: bash
         run: |
           set -Eeuo pipefail
-          test -f "$WF_FILE" || { echo "Workflow file not found: $WF_FILE"; exit 1; }
-          if yq -e '.on.workflow_dispatch.inputs.CPU' "$WF_FILE" >/dev/null 2>&1; then
-            if [ -s cpu_list.txt ]; then
-              yq -i '.on.workflow_dispatch.inputs.CPU.options = []' "$WF_FILE"
-              while read -r soc; do
-                [ -n "$soc" ] && yq -i ".on.workflow_dispatch.inputs.CPU.options += [\"${soc}\"]" "$WF_FILE"
-              done < cpu_list.txt
-              yq '.on.workflow_dispatch.inputs.CPU.options' "$WF_FILE" || true
-            else
-              echo "cpu_list.txt empty; skip updating CPU.options."
-            fi
+          if [ -s cpu_list.txt ] && yq -e '.on.workflow_dispatch.inputs.CPU' "$WF_FILE" >/dev/null; then
+            yq -i '.on.workflow_dispatch.inputs.CPU.options = []' "$WF_FILE"
+            while read -r soc; do
+              yq -i ".on.workflow_dispatch.inputs.CPU.options += [\"$soc\"]" "$WF_FILE"
+            done < cpu_list.txt
           fi
 
       - name: Update FEIL.options in Build-SukiSU-Ultra.yml
         shell: bash
         run: |
           set -Eeuo pipefail
-          if yq -e '.on.workflow_dispatch.inputs.FEIL' "$WF_FILE" >/devnull 2>&1; then
-            if [ -s xml_names.txt ]; then
-              yq -i '.on.workflow_dispatch.inputs.FEIL.options = []' "$WF_FILE"
-              while read -r name; do
-                [ -n "$name" ] && yq -i ".on.workflow_dispatch.inputs.FEIL.options += [\"${name}\"]" "$WF_FILE"
-              done < xml_names.txt
-              yq '.on.workflow_dispatch.inputs.FEIL.options' "$WF_FILE" || true
-            else
-              echo "xml_names.txt empty; skip updating FEIL.options."
-            fi
+          if [ -s xml_names.txt ] && yq -e '.on.workflow_dispatch.inputs.FEIL' "$WF_FILE" >/dev/null; then
+            yq -i '.on.workflow_dispatch.inputs.FEIL.options = []' "$WF_FILE"
+            while read -r name; do
+              yq -i ".on.workflow_dispatch.inputs.FEIL.options += [\"$name\"]" "$WF_FILE"
+            done < xml_names.txt
           fi
 
-      - name: Ensure defaults are valid (optional)
+      - name: Ensure defaults are valid
         shell: bash
         run: |
           set -Eeuo pipefail
           if [ -s cpu_list.txt ]; then
-            cpu_default="$(yq -r '.on.workflow_dispatch.inputs.CPU.default // ""' "$WF_FILE")"
-            if [ -n "$cpu_default" ] && ! grep -qx "$cpu_default" cpu_list.txt; then
-              new_def="$(head -n1 cpu_list.txt || true)"
-              [ -n "$new_def" ] && yq -i ".on.workflow_dispatch.inputs.CPU.default = \"$new_def\"" "$WF_FILE"
-            fi
+            def=$(yq -r '.on.workflow_dispatch.inputs.CPU.default // ""' "$WF_FILE")
+            grep -qxF "$def" cpu_list.txt || \
+              yq -i ".on.workflow_dispatch.inputs.CPU.default = \"$(head -n1 cpu_list.txt)\"" "$WF_FILE"
           fi
           if [ -s xml_names.txt ]; then
-            feil_default="$(yq -r '.on.workflow_dispatch.inputs.FEIL.default // ""' "$WF_FILE")"
-            if [ -n "$feil_default" ] && ! grep -qx "$feil_default" xml_names.txt; then
-              new_def="$(head -n1 xml_names.txt || true)"
-              [ -n "$new_def" ] && yq -i ".on.workflow_dispatch.inputs.FEIL.default = \"$new_def\"" "$WF_FILE"
-            fi
+            def=$(yq -r '.on.workflow_dispatch.inputs.FEIL.default // ""' "$WF_FILE")
+            grep -qxF "$def" xml_names.txt || \
+              yq -i ".on.workflow_dispatch.inputs.FEIL.default = \"$(head -n1 xml_names.txt)\"" "$WF_FILE"
           fi
 
-      - name: Commit and push if changed
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          if git status --porcelain | grep -q .; then
-            git config user.name "FurLC"
-            git config user.email "qq441791056@163.com"
-            git add "$WF_FILE"
-            git commit -m "chore: auto-update CPU and FEIL options from ${UPSTREAM_REPO}"
-            git push
-          else
-            echo "No changes to commit."
-          fi
+      - name: Create Pull Request with updates
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: chore: auto-update CPU and FEIL options
+          branch: update-options-${{ github.run_id }}
+          title: chore: auto-update CPU and FEIL options from ${UPSTREAM_REPO}
+          labels: automated
+          paths: .github/workflows/Build-SukiSU-Ultra.yml
