@@ -50,8 +50,8 @@ jobs:
 
       - name: 提交并推送更新
         run: |
-          git config --global user.email "bot@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
+          git config --global user.email "11441791056@163.com"
+          git config --global user.name "FurLC"
           git add config.yaml
           git commit -m "自动刷新 FEIL 配置 options"
           git push
