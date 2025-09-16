@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: write
-  workflows: write
 
 jobs:
   update-options:
@@ -86,16 +85,12 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          if grep -qxF "$(yq -r '.on.workflow_dispatch.inputs.CPU.default' "${WORKFLOW_FILE}")" cpu_list.txt; then
-            : # CPU default OK
-          else
+          def_cpu=$(yq -r '.on.workflow_dispatch.inputs.CPU.default // ""' "${WORKFLOW_FILE}")
+          grep -qxF "$def_cpu" cpu_list.txt || \
             yq -i ".on.workflow_dispatch.inputs.CPU.default = \"$(head -n1 cpu_list.txt)\"" "${WORKFLOW_FILE}"
-          fi
-          if grep -qxF "$(yq -r '.on.workflow_dispatch.inputs.FEIL.default' "${WORKFLOW_FILE}")" xml_names.txt; then
-            : # FEIL default OK
-          else
+          def_feil=$(yq -r '.on.workflow_dispatch.inputs.FEIL.default // ""' "${WORKFLOW_FILE}")
+          grep -qxF "$def_feil" xml_names.txt || \
             yq -i ".on.workflow_dispatch.inputs.FEIL.default = \"$(head -n1 xml_names.txt)\"" "${WORKFLOW_FILE}"
-          fi
 
       - name: Create pull request with updates
         uses: peter-evans/create-pull-request@v4
