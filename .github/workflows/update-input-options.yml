@@ -45,16 +45,34 @@ jobs:
 
           # 3) FEIL 列表（收集 .xml 文件名，不含后缀）
           : > xml_names.txt
-          while read -r b; do
-            ref_enc=${b//\//%2F}
+          while IFS= read -r branch; do
+            # 跳过空行
+            [[ -z "$branch" ]] && continue
+
+            # 对 '/' 做 URL 转义
+            ref_enc=${branch//\//%2F}
+            [[ -z "$ref_enc" ]] && continue
+
             api="https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1"
-            curl -sS -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
-                     -H "Accept: application/vnd.github+json" \
-                     "$api" \
-              | jq -r '(.tree // [])[] 
-                        | select(.type=="blob" and (.path|endswith(".xml")))
-                        | .path' \
-              | xargs -n1 basename -s .xml >> xml_names.txt
+            resp="$(curl -sS \
+              -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              "$api" || true)"
+
+            # 提取所有 xml 路径
+            paths=$(jq -r '(.tree // [])[]
+                          | select(.type=="blob" and (.path | strings | endswith(".xml")))
+                          | .path' <<<"$resp")
+
+            # 如果有结果，再做 basename 提取并写入
+            if [[ -n "$paths" ]]; then
+              while IFS= read -r p; do
+                # basename -s .xml
+                name=$(basename "$p" .xml)
+                echo "$name" >> xml_names.txt
+              done <<<"$paths"
+            fi
+
             sleep 0.2
           done < branches.txt
 
