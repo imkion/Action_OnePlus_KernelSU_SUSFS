@@ -62,25 +62,53 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          # CPU
-          yq eval -i '.on.workflow_dispatch.inputs.CPU.options = []' "$WF_FILE"
+          
+          # Create temporary files for replacement content
+          temp_cpu=$(mktemp)
+          temp_feil=$(mktemp)
+          
+          # Generate CPU options replacement
+          echo "        options:" > "$temp_cpu"
           if [ -s cpu_list.txt ]; then
             while IFS= read -r soc; do
-              yq eval -i ".on.workflow_dispatch.inputs.CPU.options += [\"$soc\"]" "$WF_FILE"
+              echo "          - $soc" >> "$temp_cpu"
             done < cpu_list.txt
           fi
-          # FEIL
-          yq eval -i '.on.workflow_dispatch.inputs.FEIL.options = []' "$WF_FILE"
+          
+          # Generate FEIL options replacement
+          echo "        options:" > "$temp_feil"
           if [ -s xml_names.txt ]; then
             while IFS= read -r name; do
-              yq eval -i ".on.workflow_dispatch.inputs.FEIL.options += [\"$name\"]" "$WF_FILE"
+              echo "          - $name" >> "$temp_feil"
             done < xml_names.txt
           fi
+          
+          # Replace CPU options between markers using sed with temporary file
+          sed -i '/# CPU_OPTIONS_START/,/# CPU_OPTIONS_END/{
+            /# CPU_OPTIONS_START/{
+              r '"$temp_cpu"'
+              b
+            }
+            /# CPU_OPTIONS_END/!d
+          }' "$WF_FILE"
+          
+          # Replace FEIL options between markers using sed with temporary file
+          sed -i '/# FEIL_OPTIONS_START/,/# FEIL_OPTIONS_END/{
+            /# FEIL_OPTIONS_START/{
+              r '"$temp_feil"'
+              b
+            }
+            /# FEIL_OPTIONS_END/!d
+          }' "$WF_FILE"
+          
+          # Clean up temporary files
+          rm -f "$temp_cpu" "$temp_feil"
 
       - name: Ensure defaults are valid
         shell: bash
         run: |
           set -Eeuo pipefail
+          # Use yq only for reading and updating defaults, not for rewriting options
           def_cpu=$(yq eval -r '.on.workflow_dispatch.inputs.CPU.default // ""' "$WF_FILE")
           grep -qxF "$def_cpu" cpu_list.txt || \
             yq eval -i ".on.workflow_dispatch.inputs.CPU.default = \"$(head -n1 cpu_list.txt)\"" "$WF_FILE"
