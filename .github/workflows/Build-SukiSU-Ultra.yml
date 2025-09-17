@@ -8,6 +8,7 @@ on:
         type: choice
         required: true
         default: sm8550
+        # CPU_OPTIONS_START
         options:
           - sm6375
           - sm7550
@@ -18,12 +19,14 @@ on:
           - sm8635
           - sm8650
           - sm8750
+        # CPU_OPTIONS_END
       
       FEIL:
         description: "配置文件"
         type: choice
         required: true
         default: "oneplus_ace3_v"
+        # FEIL_OPTIONS_START
         options:
           - JiuGeFaCai_oneplus_13_v
           - JiuGeFaCai_oneplus_ace5_pro_v
@@ -60,6 +63,7 @@ on:
           - oneplus_pad_2_pro
           - oneplus_pad_3
           - oneplus_pad_pro_v
+        # FEIL_OPTIONS_END
       
       CPUD:
         description: "处理器代号"
