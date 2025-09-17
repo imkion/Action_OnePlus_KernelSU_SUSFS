@@ -2,7 +2,6 @@ name: Build SukiSU Ultra
 on:
   workflow_dispatch:
     inputs:
-    
       CPU:
         description: "分支（SoC平台）"
         type: choice
@@ -20,51 +19,14 @@ on:
           - sm8650
           - sm8750
         # CPU_OPTIONS_END
-      
       FEIL:
         description: "配置文件"
         type: choice
         required: true
-        default: "oneplus_ace3_v"
+        default: ""
         # FEIL_OPTIONS_START
         options:
-          - JiuGeFaCai_oneplus_13_v
-          - JiuGeFaCai_oneplus_ace5_pro_v
-          - oneplus12_u
-          - oneplus12_v
-          - oneplus_10_pro_s
-          - oneplus_10_pro_v
-          - oneplus_10t_v
-          - oneplus_11_t
-          - oneplus_11_u
-          - oneplus_11_v
-          - oneplus_11r_u
-          - oneplus_11r_v
-          - oneplus_12r_v
-          - oneplus_13
-          - oneplus_13r
-          - oneplus_13s
-          - oneplus_13t
-          - oneplus_ace2_pro_v
-          - oneplus_ace2_v
-          - oneplus_ace3_pro
-          - oneplus_ace3_pro_v
-          - oneplus_ace3_v
-          - oneplus_ace5
-          - oneplus_ace5_pro
-          - oneplus_ace_3v_v
-          - oneplus_ace_pro_v
-          - oneplus_nord_4_v
-          - oneplus_nord_5
-          - oneplus_nord_ce4_lite_5g_v
-          - oneplus_nord_ce4_v
-          - oneplus_open_v
-          - oneplus_pad2_v
-          - oneplus_pad_2_pro
-          - oneplus_pad_3
-          - oneplus_pad_pro_v
         # FEIL_OPTIONS_END
-      
       CPUD:
         description: "处理器代号"
         type: choice
@@ -77,7 +39,6 @@ on:
           - waipio
           - kalama
           - sun
-      
       ANDROID_VERSION:
         description: "内核安卓版本"
         type: choice
@@ -88,7 +49,6 @@ on:
           - android13
           - android14
           - android15
-          
       KERNEL_VERSION:
         description: "内核版本"
         type: choice
@@ -99,19 +59,16 @@ on:
           - "5.15"
           - "6.1"
           - "6.6"
-          
       KPM:
         description: "是否启用KPM"
         type: boolean
         required: true
         default: false
-          
       ZRAM:
         description: "是否启用更多ZRAM算法"
         type: boolean
         required: true
         default: true
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -120,7 +77,6 @@ jobs:
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
       CCACHE_MAXSIZE: 8G
-    
     steps:
       - name: 最大化构建空间
         if: ${{ github.event.inputs.KERNEL_VERSION != '6.1' }}
@@ -132,20 +88,17 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
-     
       - name: 设置缓存环境
         run: |
           # 设置机型隔离缓存目录 #
           echo "CCACHE_DIR=$HOME/.ccache_${{ github.event.inputs.FEIL }}" >> $GITHUB_ENV
           mkdir -p "$HOME/.ccache_${{ github.event.inputs.FEIL }}"
           echo "缓存目录: $HOME/.ccache_${{ github.event.inputs.FEIL }}"
-
       - name: "配置Git账户"
         run: |
           # 配置Git用户信息 #
           git config --global user.name "build"
           git config --global user.email "qq441791056@163.com"
-          
       - name: "配置APT缓存"
         run: |
           # 设置APT缓存目录 #
@@ -158,7 +111,6 @@ jobs:
           echo "Acquire::Check-Valid-Until \"false\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           echo "Acquire::Languages \"none\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           sudo chown -R $USER:$USER "$APT_CACHE_DIR"
-        
       - name: "恢复APT缓存"
         uses: actions/cache@v3
         with:
@@ -166,7 +118,6 @@ jobs:
           key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/Build SukiSU Ultra.yml') }}
           restore-keys: |
             ${{ runner.os }}-apt-
-            
       - name: "安装构建依赖"
         run: |
           # 安装编译依赖项 #
@@ -180,7 +131,6 @@ jobs:
             build-essential flex bison libssl-dev \
             libncurses-dev liblz4-tool zlib1g-dev \
             libxml2-utils rsync unzip
-
       - name: "恢复ccache缓存"
         uses: actions/cache@v3
         with:
@@ -189,12 +139,11 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-${{ github.event.inputs.FEIL }}-
             ccache-${{ runner.os }}-
-
       - name: "初始化ccache"
         run: |
           # 初始化ccache
           INIT_FLAG="${{ env.CCACHE_DIR }}/.ccache_initialized"
-          
+
           if command -v ccache >/dev/null 2>&1; then
             if [ ! -f "$INIT_FLAG" ]; then
               mkdir -p "${{ env.CCACHE_DIR }}"
@@ -210,7 +159,6 @@ jobs:
           # 显示缓存统计
           ccache -s
           echo "ccache初始化流程完成"
-          
       - name: 初始化repo
         run: |
           # 下载repo工具 #
@@ -219,58 +167,10 @@ jobs:
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
           echo "repo工具安装完成"
-
       - name: "克隆内核源码"
-        run: |
-          # 初始化内核仓库 #
-          mkdir kernel_workspace && cd kernel_workspace
-
-          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
-            -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
-            -m ${{ github.event.inputs.FEIL }}.xml --depth=1
-          # 使用最大线程同步代码库 #
-          repo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync
-          
-          # 清理abi导出和-dirty标记
-          echo "Kernel version:-${{ github.event.inputs.ANDROID_VERSION }}-furlc"
-          rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
-          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
-          sed -i 's/ -dirty//g' kernel_platform/common/scripts/setlocalversion
-          sed -i 's/ -dirty//g' kernel_platform/msm-kernel/scripts/setlocalversion
-          sed -i 's/ -dirty//g' kernel_platform/external/dtc/scripts/setlocalversion
-          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/common/scripts/setlocalversion
-          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/msm-kernel/scripts/setlocalversion
-          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/external/dtc/scripts/setlocalversion
-          sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-furlc"|' kernel_platform/common/scripts/setlocalversion            
-          sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-furlc"|' kernel_platform/msm-kernel/scripts/setlocalversion
-          sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-furlc"|' kernel_platform/external/dtc/scripts/setlocalversion
-      
+        run: "# 初始化内核仓库 #\nmkdir kernel_workspace && cd kernel_workspace\n\nrepo init -u https://github.com/OnePlusOSS/kernel_manifest.git \\\n  -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \\\n  -m ${{ github.event.inputs.FEIL }}.xml --depth=1\n# 使用最大线程同步代码库 #\nrepo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync\n\n# 清理abi导出和-dirty标记\necho \"Kernel version:-${{ github.event.inputs.ANDROID_VERSION }}-furlc\"\nrm kernel_platform/common/android/abi_gki_protected_exports_* || echo \"No protected exports!\"\nrm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo \"No protected exports!\"\nsed -i 's/ -dirty//g' kernel_platform/common/scripts/setlocalversion\nsed -i 's/ -dirty//g' kernel_platform/msm-kernel/scripts/setlocalversion\nsed -i 's/ -dirty//g' kernel_platform/external/dtc/scripts/setlocalversion\nsed -i '$i res=$(echo \"$res\" | sed '\\''s/-dirty//g'\\'')' kernel_platform/common/scripts/setlocalversion\nsed -i '$i res=$(echo \"$res\" | sed '\\''s/-dirty//g'\\'')' kernel_platform/msm-kernel/scripts/setlocalversion\nsed -i '$i res=$(echo \"$res\" | sed '\\''s/-dirty//g'\\'')' kernel_platform/external/dtc/scripts/setlocalversion\nsed -i '$s|echo \"\\$res\"|echo \"-${{ github.event.inputs.ANDROID_VERSION }}-furlc\"|' kernel_platform/common/scripts/setlocalversion            \nsed -i '$s|echo \"\\$res\"|echo \"-${{ github.event.inputs.ANDROID_VERSION }}-furlc\"|' kernel_platform/msm-kernel/scripts/setlocalversion\nsed -i '$s|echo \"\\$res\"|echo \"-${{ github.event.inputs.ANDROID_VERSION }}-furlc\"|' kernel_platform/external/dtc/scripts/setlocalversion\n"
       - name: 注入KernelSU-SukiSU Ultra
-        run: |
-          # 设置SukiSU Ultra #
-          mkdir -p kernel_workspace/kernel_platform
-          
-          cd kernel_workspace/kernel_platform
-          # 下载并执行设置脚本 #
-          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" | bash -s susfs-main
-
-          cd KernelSU
-          # 下载KernelSU设置工具 #
-          curl -L -o sukisu_setup.bin 
-          chmod +x sukisu_setup.bin
-          
-          # 验证Makefile存在
-          if [ ! -f "kernel/Makefile" ]; then
-            echo "Error：缺少kernel/Makefile"
-            ls -la
-            exit 1
-          fi
-          
-          ./sukisu_setup.bin
-          rm -rf ./sukisu_setup.bin
-          
-          echo "SukiSU Ultra配置完成"
-      
+        run: "# 设置SukiSU Ultra #\nmkdir -p kernel_workspace/kernel_platform\n\ncd kernel_workspace/kernel_platform\n# 下载并执行设置脚本 #\ncurl -LSs \"https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh\" | bash -s susfs-main\n\ncd KernelSU\n# 下载KernelSU设置工具 #\ncurl -L -o sukisu_setup.bin \nchmod +x sukisu_setup.bin\n\n# 验证Makefile存在\nif [ ! -f \"kernel/Makefile\" ]; then\n  echo \"Error：缺少kernel/Makefile\"\n  ls -la\n  exit 1\nfi\n\n./sukisu_setup.bin\nrm -rf ./sukisu_setup.bin\n\necho \"SukiSU Ultra配置完成\"\n"
       - name: 设置susfs并应用主补丁
         run: |
           set -e
