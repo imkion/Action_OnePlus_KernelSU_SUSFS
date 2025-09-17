@@ -31,75 +31,147 @@ jobs:
       - name: Generate CPU & FEIL lists
         run: |
           set -Eeuo pipefail
+          
+          # Generate CPU list from branches containing sm[0-9]+
+          echo "🔍 Fetching branches from ${UPSTREAM_REPO}..."
           git ls-remote --heads "https://github.com/${UPSTREAM_REPO}.git" \
-            | sed 's#refs/heads/##' > branches.txt
-          grep -E 'sm[0-9]+' branches.txt | sed 's#.*/##' | sort -u > cpu_list.txt
-
+            | sed 's#refs/heads/##' | tr -d '\r' > branches.txt
+          
+          # Extract CPU platforms and trim any CR characters
+          grep -E 'sm[0-9]+' branches.txt | sed 's#.*/##' | tr -d '\r' | sort -u > cpu_list.txt
+          
+          echo "📱 Found $(wc -l < cpu_list.txt) CPU platforms"
+          
+          # Generate FEIL list from XML files
+          echo "🔍 Fetching XML files from all branches..."
           : > xml_names.txt
           while IFS= read -r branch; do
             [[ -z "$branch" ]] && continue
-            ref_enc=${branch//\//%2F}
+            
+            # Properly URL-encode branch name using jq
+            ref_enc=$(echo "$branch" | jq -rR '@uri')
             [[ -z "$ref_enc" ]] && continue
+            
+            echo "  Processing branch: $branch"
             resp=$(curl -sS -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
                        -H "Accept: application/vnd.github+json" \
                        "https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1" \
                       || true)
-            jq -r '(.tree//[])[]
-                   | select(.type=="blob" and .path|endswith(".xml"))
-                   | .path' <<<"$resp" \
-              | xargs -n1 basename -s .xml >> xml_names.txt
+            
+            # Validate JSON response before processing
+            if echo "$resp" | jq empty 2>/dev/null; then
+              echo "$resp" | jq -r '(.tree//[])[]
+                     | select(.type=="blob" and .path|endswith(".xml"))
+                     | .path' \
+                | xargs -r -n1 basename -s .xml >> xml_names.txt
+            else
+              echo "  ⚠️  Invalid JSON response for branch $branch, skipping"
+            fi
             sleep 0.2
           done < branches.txt
-          sort -u xml_names.txt -o xml_names.txt
+          
+          # Remove duplicates and CR characters
+          sort -u xml_names.txt | tr -d '\r' > xml_names_clean.txt
+          mv xml_names_clean.txt xml_names.txt
+          
+          echo "📄 Found $(wc -l < xml_names.txt) unique XML configurations"
 
       - name: Replace CPU options in workflow
         run: |
           set -Eeuo pipefail
-          # build a replacement block for CPU
+          
+          # Check if CPU list is empty
+          if [[ ! -s cpu_list.txt ]]; then
+            echo "⚠️  CPU list is empty, skipping CPU options replacement to preserve existing content"
+            exit 0
+          fi
+          
+          # Check if markers exist in target file
+          if ! grep -q "# CPU_OPTIONS_START" "$WF_FILE" || ! grep -q "# CPU_OPTIONS_END" "$WF_FILE"; then
+            echo "⚠️  CPU option markers not found in $WF_FILE, skipping replacement"
+            exit 0
+          fi
+          
+          # Detect indentation from the START marker line
+          cpu_indent=$(grep -n "# CPU_OPTIONS_START" "$WF_FILE" | head -1 | sed 's/^[0-9]*://' | sed 's/# CPU_OPTIONS_START.*//' | cat -A | sed 's/\$$//')
+          echo "🔧 Detected CPU indentation: '${cpu_indent}' (length: ${#cpu_indent})"
+          
+          # Build replacement content (without markers)
           {
-            echo "# CPU_OPTIONS_START"
-            echo "options:"
+            echo "${cpu_indent}options:"
             while IFS= read -r soc; do
-              echo "  - $soc"
+              [[ -n "$soc" ]] && echo "${cpu_indent}  - $soc"
             done < cpu_list.txt
-            echo "# CPU_OPTIONS_END"
-          } > cpu_block.txt
-
-          # in-place replace between markers
-          sed -i "/# CPU_OPTIONS_START/,/# CPU_OPTIONS_END/{ 
-            /# CPU_OPTIONS_START/{p; r cpu_block.txt
-            }; 
-            /# CPU_OPTIONS_END/p; 
-            d 
+          } > cpu_content.txt
+          
+          echo "📝 Replacing CPU options content between markers..."
+          
+          # Use precise sed to replace only content between markers
+          sed -i "/# CPU_OPTIONS_START/,/# CPU_OPTIONS_END/{
+            /# CPU_OPTIONS_START/{
+              r cpu_content.txt
+              n
+            }
+            /# CPU_OPTIONS_END/!d
           }" "$WF_FILE"
+          
+          echo "✅ CPU options replacement completed"
 
       - name: Replace FEIL options in workflow
         run: |
           set -Eeuo pipefail
-          # build a replacement block for FEIL
+          
+          # Check if FEIL list is empty
+          if [[ ! -s xml_names.txt ]]; then
+            echo "⚠️  FEIL list is empty, skipping FEIL options replacement to preserve existing content"
+            exit 0
+          fi
+          
+          # Check if markers exist in target file
+          if ! grep -q "# FEIL_OPTIONS_START" "$WF_FILE" || ! grep -q "# FEIL_OPTIONS_END" "$WF_FILE"; then
+            echo "⚠️  FEIL option markers not found in $WF_FILE, skipping replacement"
+            exit 0
+          fi
+          
+          # Detect indentation from the START marker line
+          feil_indent=$(grep -n "# FEIL_OPTIONS_START" "$WF_FILE" | head -1 | sed 's/^[0-9]*://' | sed 's/# FEIL_OPTIONS_START.*//' | cat -A | sed 's/\$$//')
+          echo "🔧 Detected FEIL indentation: '${feil_indent}' (length: ${#feil_indent})"
+          
+          # Build replacement content (without markers)
           {
-            echo "# FEIL_OPTIONS_START"
-            echo "options:"
+            echo "${feil_indent}options:"
             while IFS= read -r xml; do
-              echo "  - $xml"
+              [[ -n "$xml" ]] && echo "${feil_indent}  - $xml"
             done < xml_names.txt
-            echo "# FEIL_OPTIONS_END"
-          } > feil_block.txt
-
-          sed -i "/# FEIL_OPTIONS_START/,/# FEIL_OPTIONS_END/{ 
-            /# FEIL_OPTIONS_START/{p; r feil_block.txt
-            }; 
-            /# FEIL_OPTIONS_END/p; 
-            d 
+          } > feil_content.txt
+          
+          echo "📝 Replacing FEIL options content between markers..."
+          
+          # Use precise sed to replace only content between markers
+          sed -i "/# FEIL_OPTIONS_START/,/# FEIL_OPTIONS_END/{
+            /# FEIL_OPTIONS_START/{
+              r feil_content.txt
+              n
+            }
+            /# FEIL_OPTIONS_END/!d
           }" "$WF_FILE"
+          
+          echo "✅ FEIL options replacement completed"
 
       - name: Commit & push if changed
         run: |
           set -Eeuo pipefail
-          git diff --quiet || {
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add "$WF_FILE"
-            git commit -m "chore: update CPU and FEIL options"
-            git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
-          }
+          
+          # Check if the target workflow file has actually changed
+          if git diff --quiet "$WF_FILE"; then
+            echo "✅ No changes detected in $WF_FILE, skipping commit"
+            exit 0
+          fi
+          
+          echo "📝 Changes detected in $WF_FILE, committing..."
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$WF_FILE"
+          git commit -m "chore: update CPU and FEIL options"
+          git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
+          echo "🚀 Changes pushed successfully"
