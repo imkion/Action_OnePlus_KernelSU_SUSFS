@@ -16,115 +16,90 @@ jobs:
       UPSTREAM_REPO: "OnePlusOSS/kernel_manifest"
 
     steps:
-      - name: Checkout this repo with PAT
+      - name: Checkout with PAT
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
 
-      - name: Install jq and yq
-        shell: bash
+      - name: Install dependencies
         run: |
           set -Eeuo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y jq
-          sudo curl -fsSL -o /usr/local/bin/yq \
-            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+          sudo apt-get install -y jq repo
 
       - name: Generate CPU & FEIL lists
-        shell: bash
         run: |
           set -Eeuo pipefail
           git ls-remote --heads "https://github.com/${UPSTREAM_REPO}.git" \
             | sed 's#refs/heads/##' > branches.txt
-          grep -E '^.*/sm[0-9]+' branches.txt | sed 's#.*/##' | sort -u > cpu_list.txt
+          grep -E 'sm[0-9]+' branches.txt | sed 's#.*/##' | sort -u > cpu_list.txt
 
           : > xml_names.txt
           while IFS= read -r branch; do
             [[ -z "$branch" ]] && continue
             ref_enc=${branch//\//%2F}
             [[ -z "$ref_enc" ]] && continue
-            api="https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1"
             resp=$(curl -sS -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
-                       -H "Accept: application/vnd.github+json" "$api" || true)
-            paths=$(jq -r '(.tree//[])[] | select(.type=="blob" and (.path|strings|endswith(".xml"))) | .path' <<<"$resp")
-            if [[ -n "$paths" ]]; then
-              while IFS= read -r p; do
-                echo "$(basename "$p" .xml)" >> xml_names.txt
-              done <<<"$paths"
-            fi
+                       -H "Accept: application/vnd.github+json" \
+                       "https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1" \
+                      || true)
+            jq -r '(.tree//[])[]
+                   | select(.type=="blob" and .path|endswith(".xml"))
+                   | .path' <<<"$resp" \
+              | xargs -n1 basename -s .xml >> xml_names.txt
             sleep 0.2
           done < branches.txt
           sort -u xml_names.txt -o xml_names.txt
 
-      - name: Update CPU.options & FEIL.options
-        shell: bash
+      - name: Replace CPU options in workflow
         run: |
           set -Eeuo pipefail
-          
-          # Create temporary files for replacement content
-          temp_cpu=$(mktemp)
-          temp_feil=$(mktemp)
-          
-          # Generate CPU options replacement
-          echo "        options:" > "$temp_cpu"
-          if [ -s cpu_list.txt ]; then
+          # build a replacement block for CPU
+          {
+            echo "# CPU_OPTIONS_START"
+            echo "options:"
             while IFS= read -r soc; do
-              echo "          - $soc" >> "$temp_cpu"
+              echo "  - $soc"
             done < cpu_list.txt
-          fi
-          
-          # Generate FEIL options replacement
-          echo "        options:" > "$temp_feil"
-          if [ -s xml_names.txt ]; then
-            while IFS= read -r name; do
-              echo "          - $name" >> "$temp_feil"
-            done < xml_names.txt
-          fi
-          
-          # Replace CPU options between markers using sed with temporary file
-          sed -i '/# CPU_OPTIONS_START/,/# CPU_OPTIONS_END/{
-            /# CPU_OPTIONS_START/{
-              r '"$temp_cpu"'
-              b
-            }
-            /# CPU_OPTIONS_END/!d
-          }' "$WF_FILE"
-          
-          # Replace FEIL options between markers using sed with temporary file
-          sed -i '/# FEIL_OPTIONS_START/,/# FEIL_OPTIONS_END/{
-            /# FEIL_OPTIONS_START/{
-              r '"$temp_feil"'
-              b
-            }
-            /# FEIL_OPTIONS_END/!d
-          }' "$WF_FILE"
-          
-          # Clean up temporary files
-          rm -f "$temp_cpu" "$temp_feil"
+            echo "# CPU_OPTIONS_END"
+          } > cpu_block.txt
 
-      - name: Ensure defaults are valid
-        shell: bash
+          # in-place replace between markers
+          sed -i "/# CPU_OPTIONS_START/,/# CPU_OPTIONS_END/{ 
+            /# CPU_OPTIONS_START/{p; r cpu_block.txt
+            }; 
+            /# CPU_OPTIONS_END/p; 
+            d 
+          }" "$WF_FILE"
+
+      - name: Replace FEIL options in workflow
         run: |
           set -Eeuo pipefail
-          # Use yq only for reading and updating defaults, not for rewriting options
-          def_cpu=$(yq eval -r '.on.workflow_dispatch.inputs.CPU.default // ""' "$WF_FILE")
-          grep -qxF "$def_cpu" cpu_list.txt || \
-            yq eval -i ".on.workflow_dispatch.inputs.CPU.default = \"$(head -n1 cpu_list.txt)\"" "$WF_FILE"
-          def_feil=$(yq eval -r '.on.workflow_dispatch.inputs.FEIL.default // ""' "$WF_FILE")
-          grep -qxF "$def_feil" xml_names.txt || \
-            yq eval -i ".on.workflow_dispatch.inputs.FEIL.default = \"$(head -n1 xml_names.txt)\"" "$WF_FILE"
+          # build a replacement block for FEIL
+          {
+            echo "# FEIL_OPTIONS_START"
+            echo "options:"
+            while IFS= read -r xml; do
+              echo "  - $xml"
+            done < xml_names.txt
+            echo "# FEIL_OPTIONS_END"
+          } > feil_block.txt
 
-      - name: Commit and push if changed
-        shell: bash
+          sed -i "/# FEIL_OPTIONS_START/,/# FEIL_OPTIONS_END/{ 
+            /# FEIL_OPTIONS_START/{p; r feil_block.txt
+            }; 
+            /# FEIL_OPTIONS_END/p; 
+            d 
+          }" "$WF_FILE"
+
+      - name: Commit & push if changed
         run: |
           set -Eeuo pipefail
           git diff --quiet || {
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add "$WF_FILE"
-            git commit -m "chore: auto-update CPU and FEIL options"
-            git remote set-url origin https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
-            git push origin HEAD:main
+            git commit -m "chore: update CPU and FEIL options"
+            git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
           }
