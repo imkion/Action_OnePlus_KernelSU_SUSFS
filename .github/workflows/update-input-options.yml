@@ -32,54 +32,6 @@ jobs:
             https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      # ← 保留下面这两段不被 yq 或 sed 操作误删 ↓
-
-      - name: Setup SukiSU Ultra
-        shell: bash
-        run: |
-          # 设置SukiSU Ultra #
-          mkdir -p kernel_workspace/kernel_platform
-          cd kernel_workspace/kernel_platform
-          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" \
-            | bash -s susfs-main
-
-          cd KernelSU
-          curl -L -o sukisu_setup.bin https://example.com/path/to/sukisu_setup.bin
-          chmod +x sukisu_setup.bin
-
-          if [ ! -f "kernel/Makefile" ]; then
-            echo "Error：缺少kernel/Makefile"
-            ls -la
-            exit 1
-          fi
-
-          ./sukisu_setup.bin
-          rm -rf ./sukisu_setup.bin
-          echo "SukiSU Ultra配置完成"
-
-      - name: Initialize kernel repository
-        shell: bash
-        run: |
-          # 初始化内核仓库 #
-          mkdir -p kernel_workspace && cd kernel_workspace
-          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
-            -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
-            -m ${{ github.event.inputs.FEIL }}.xml --depth=1
-          repo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync
-
-          echo "Kernel version:-${{ github.event.inputs.ANDROID_VERSION }}-furlc"
-          rm kernel_platform/common/android/abi_gki_protected_exports_* 2>/dev/null || true
-          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* 2>/dev/null || true
-          # 去除 -dirty 标记并追加版本后缀
-          for d in common msm-kernel external/dtc; do
-            base=kernel_platform/$d/scripts/setlocalversion
-            sed -i 's/ -dirty//g' "$base"
-            sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$base"
-            sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-furlc"|' "$base"
-          done
-
-      # ← CPU/FEIL options 更新段落，用 in-place 替换，确保不 touch 上面内容 ↓
-
       - name: Generate CPU & FEIL lists
         shell: bash
         run: |
