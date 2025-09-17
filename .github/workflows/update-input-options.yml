@@ -11,121 +11,135 @@ permissions:
 jobs:
   update-options:
     runs-on: ubuntu-latest
-
     env:
       WF_FILE: ".github/workflows/Build-SukiSU-Ultra.yml"
       UPSTREAM_REPO: "OnePlusOSS/kernel_manifest"
 
     steps:
-      - name: Checkout with PAT
+      - name: Checkout this repo with PAT
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
 
-      - name: Install dependencies
+      - name: Install jq and yq
+        shell: bash
         run: |
           set -Eeuo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y jq curl
-          curl -fsSL \
-            "https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64" \
-            -o /usr/local/bin/yq && sudo chmod +x /usr/local/bin/yq
+          sudo apt-get install -y jq
+          sudo curl -fsSL -o /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      # ← 保留下面这两段不被 yq 或 sed 操作误删 ↓
+
+      - name: Setup SukiSU Ultra
+        shell: bash
+        run: |
+          # 设置SukiSU Ultra #
+          mkdir -p kernel_workspace/kernel_platform
+          cd kernel_workspace/kernel_platform
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" \
+            | bash -s susfs-main
+
+          cd KernelSU
+          curl -L -o sukisu_setup.bin https://example.com/path/to/sukisu_setup.bin
+          chmod +x sukisu_setup.bin
+
+          if [ ! -f "kernel/Makefile" ]; then
+            echo "Error：缺少kernel/Makefile"
+            ls -la
+            exit 1
+          fi
+
+          ./sukisu_setup.bin
+          rm -rf ./sukisu_setup.bin
+          echo "SukiSU Ultra配置完成"
+
+      - name: Initialize kernel repository
+        shell: bash
+        run: |
+          # 初始化内核仓库 #
+          mkdir -p kernel_workspace && cd kernel_workspace
+          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git \
+            -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \
+            -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+          repo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync
+
+          echo "Kernel version:-${{ github.event.inputs.ANDROID_VERSION }}-furlc"
+          rm kernel_platform/common/android/abi_gki_protected_exports_* 2>/dev/null || true
+          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* 2>/dev/null || true
+          # 去除 -dirty 标记并追加版本后缀
+          for d in common msm-kernel external/dtc; do
+            base=kernel_platform/$d/scripts/setlocalversion
+            sed -i 's/ -dirty//g' "$base"
+            sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' "$base"
+            sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-furlc"|' "$base"
+          done
+
+      # ← CPU/FEIL options 更新段落，用 in-place 替换，确保不 touch 上面内容 ↓
 
       - name: Generate CPU & FEIL lists
         shell: bash
         run: |
           set -Eeuo pipefail
-          # 1) 拉取所有分支
           git ls-remote --heads "https://github.com/${UPSTREAM_REPO}.git" \
             | sed 's#refs/heads/##' > branches.txt
+          grep -E '^.*/sm[0-9]+' branches.txt | sed 's#.*/##' | sort -u > cpu_list.txt
 
-          # 2) CPU 列表（只保留 sm + 数字）
-          grep -E 'sm[0-9]+' branches.txt | sed 's#.*/##' | sort -u > cpu_list.txt
-
-          # 3) FEIL 列表（收集 .xml 文件名，不含后缀）
-          : > feil_list.txt
+          : > xml_names.txt
           while IFS= read -r branch; do
-            # 跳过空行和只包含空白字符的行
-            [[ -z "${branch// }" ]] && continue
-
-            # 对 '/' 做 URL 转义
+            [[ -z "$branch" ]] && continue
             ref_enc=${branch//\//%2F}
-            # 确保编码后的引用不为空且不包含无效字符
-            [[ -z "$ref_enc" || "$ref_enc" =~ [[:space:]] ]] && continue
-
+            [[ -z "$ref_enc" ]] && continue
             api="https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1"
-            resp="$(curl -sS \
-              -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
-              -H "Accept: application/vnd.github+json" \
-              "$api" || true)"
-
-            # 检查 curl 响应是否有效
-            [[ -z "$resp" ]] && continue
-
-            # 提取所有 xml 路径
-            paths=$(jq -r '(.tree // [])[]
-                          | select(.type=="blob" and (.path | strings | endswith(".xml")))
-                          | .path' <<<"$resp" 2>/dev/null || true)
-
-            # 如果有结果，再做 basename 提取并写入
+            resp=$(curl -sS -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
+                       -H "Accept: application/vnd.github+json" "$api" || true)
+            paths=$(jq -r '(.tree//[])[] | select(.type=="blob" and (.path|strings|endswith(".xml"))) | .path' <<<"$resp")
             if [[ -n "$paths" ]]; then
               while IFS= read -r p; do
-                [[ -n "$p" ]] || continue
-                # basename -s .xml
-                name=$(basename "$p" .xml)
-                [[ -n "$name" ]] && echo "$name" >> feil_list.txt
+                echo "$(basename "$p" .xml)" >> xml_names.txt
               done <<<"$paths"
             fi
-
             sleep 0.2
           done < branches.txt
+          sort -u xml_names.txt -o xml_names.txt
 
-          # 确保 feil_list.txt 存在并排序去重
-          if [[ -f feil_list.txt ]]; then
-            sort -u feil_list.txt -o feil_list.txt
+      - name: Update CPU.options & FEIL.options
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # CPU
+          yq eval -i '.on.workflow_dispatch.inputs.CPU.options = []' "$WF_FILE"
+          if [ -s cpu_list.txt ]; then
+            while IFS= read -r soc; do
+              yq eval -i ".on.workflow_dispatch.inputs.CPU.options += [\"$soc\"]" "$WF_FILE"
+            done < cpu_list.txt
+          fi
+          # FEIL
+          yq eval -i '.on.workflow_dispatch.inputs.FEIL.options = []' "$WF_FILE"
+          if [ -s xml_names.txt ]; then
+            while IFS= read -r name; do
+              yq eval -i ".on.workflow_dispatch.inputs.FEIL.options += [\"$name\"]" "$WF_FILE"
+            done < xml_names.txt
           fi
 
-      - name: Update workflow_dispatch inputs
+      - name: Ensure defaults are valid
         shell: bash
         run: |
           set -Eeuo pipefail
-          for NAME in CPU FEIL; do
-            LIST_FILE="${NAME,,}_list.txt"
-            
-            # 检查文件是否存在且非空
-            if [[ ! -f "$LIST_FILE" || ! -s "$LIST_FILE" ]]; then
-              echo "Warning: $LIST_FILE does not exist or is empty, skipping $NAME"
-              continue
-            fi
-            
-            # 清空 options
-            yq eval -i ".on.workflow_dispatch.inputs.${NAME}.options = []" "$WF_FILE"
+          def_cpu=$(yq eval -r '.on.workflow_dispatch.inputs.CPU.default // ""' "$WF_FILE")
+          grep -qxF "$def_cpu" cpu_list.txt || \
+            yq eval -i ".on.workflow_dispatch.inputs.CPU.default = \"$(head -n1 cpu_list.txt)\"" "$WF_FILE"
+          def_feil=$(yq eval -r '.on.workflow_dispatch.inputs.FEIL.default // ""' "$WF_FILE")
+          grep -qxF "$def_feil" xml_names.txt || \
+            yq eval -i ".on.workflow_dispatch.inputs.FEIL.default = \"$(head -n1 xml_names.txt)\"" "$WF_FILE"
 
-            # 重新填充 options
-            while read -r item; do
-              # 跳过空行
-              [[ -n "${item// }" ]] && yq eval -i ".on.workflow_dispatch.inputs.${NAME}.options += [\"${item}\"]" "$WF_FILE"
-            done < "$LIST_FILE"
-
-            # 校验并更新 default
-            DEF_PATH=".on.workflow_dispatch.inputs.${NAME}.default"
-            CUR=$(yq eval -r "${DEF_PATH} // \"\"" "$WF_FILE")
-            if [[ -n "$CUR" ]] && ! grep -qxF "$CUR" "$LIST_FILE" 2>/dev/null; then
-              NEW=$(head -n1 "$LIST_FILE" 2>/dev/null | tr -d '[:space:]')
-              [[ -n "$NEW" ]] && yq eval -i "${DEF_PATH} = \"${NEW}\"" "$WF_FILE"
-            elif [[ -z "$CUR" ]]; then
-              # 如果当前 default 为空，设置第一个选项为默认值
-              NEW=$(head -n1 "$LIST_FILE" 2>/dev/null | tr -d '[:space:]')
-              [[ -n "$NEW" ]] && yq eval -i "${DEF_PATH} = \"${NEW}\"" "$WF_FILE"
-            fi
-          done
-
-      - name: Commit & push if changed
+      - name: Commit and push if changed
         shell: bash
         run: |
           set -Eeuo pipefail
-          # 如果没有变更就退出
           git diff --quiet || {
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
