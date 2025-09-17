@@ -17,108 +17,84 @@ jobs:
       UPSTREAM_REPO: "OnePlusOSS/kernel_manifest"
 
     steps:
-      - name: Checkout this repo with PAT
+      - name: Checkout with PAT
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0
 
-      - name: Install jq and yq
-        shell: bash
+      - name: Install dependencies
         run: |
           set -Eeuo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y jq
-          sudo curl -fsSL -o /usr/local/bin/yq \
-            https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+          sudo apt-get install -y jq curl
+          curl -fsSL \
+            "https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64" \
+            -o /usr/local/bin/yq && sudo chmod +x /usr/local/bin/yq
 
-      - name: Fetch upstream branches → CPU list
+      - name: Generate CPU & FEIL lists
         shell: bash
         run: |
           set -Eeuo pipefail
+          # 1) 拉取所有分支
           git ls-remote --heads "https://github.com/${UPSTREAM_REPO}.git" \
-            | awk '{print $2}' | sed 's#refs/heads/##' > branches_full.txt
-          awk -F'/' '{print $NF}' branches_full.txt \
-            | awk '/^sm[0-9]+$/' | sort -u > cpu_list.txt
+            | sed 's#refs/heads/##' > branches.txt
 
-      - name: Collect .xml basenames → FEIL list
-        shell: bash
-        run: |
-          set -Eeuo pipefail
+          # 2) CPU 列表（只保留 sm + 数字）
+          grep -E 'sm[0-9]+' branches.txt | sed 's#.*/##' | sort -u > cpu_list.txt
+
+          # 3) FEIL 列表（收集 .xml 文件名，不含后缀）
           : > xml_names.txt
-          while read -r full_branch; do
-            ref_enc="${full_branch//\//%2F}"
+          while read -r b; do
+            ref_enc=${b//\//%2F}
             api="https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1"
-            resp="$(curl -sS \
-              -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
-              -H "Accept: application/vnd.github+json" \
-              "$api" || true)"
-            if echo "$resp" | jq -e '.tree' >/dev/null 2>&1; then
-              echo "$resp" \
-                | jq -r '.tree[]
-                    | select(.type=="blob" and (.path|endswith(".xml")))
-                    | .path' \
-                | sed -E 's#.*/##;s/\.xml$//' \
-                >> xml_names.txt
-            fi
+            curl -sS -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
+                     -H "Accept: application/vnd.github+json" \
+                     "$api" \
+              | jq -r '(.tree // [])[] 
+                        | select(.type=="blob" and (.path|endswith(".xml")))
+                        | .path' \
+              | xargs -n1 basename -s .xml >> xml_names.txt
             sleep 0.2
-          done < branches_full.txt
+          done < branches.txt
+
           sort -u xml_names.txt -o xml_names.txt
 
-      - name: Update CPU.options
+      - name: Update workflow_dispatch inputs
         shell: bash
         run: |
           set -Eeuo pipefail
-          if [ -s cpu_list.txt ]; then
-            yq -i '.on.workflow_dispatch.inputs.CPU.options = []' "$WF_FILE"
-            while read -r soc; do
-              yq -i ".on.workflow_dispatch.inputs.CPU.options += [\"$soc\"]" "$WF_FILE"
-            done < cpu_list.txt
-          fi
+          for NAME in CPU FEIL; do
+            LIST_FILE="${NAME,,}_list.txt"
+            # 清空 options
+            yq eval -i ".on.workflow_dispatch.inputs.${NAME}.options = []" "$WF_FILE"
 
-      - name: Update FEIL.options
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          if [ -s xml_names.txt ]; then
-            yq -i '.on.workflow_dispatch.inputs.FEIL.options = []' "$WF_FILE"
-            while read -r name; do
-              yq -i ".on.workflow_dispatch.inputs.FEIL.options += [\"$name\"]" "$WF_FILE"
-            done < xml_names.txt
-          fi
-
-      - name: Ensure defaults are valid
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          if [ -s cpu_list.txt ]; then
-            cpu_default="$(yq -r '.on.workflow_dispatch.inputs.CPU.default // ""' "$WF_FILE")"
-            if [ -n "$cpu_default" ] && ! grep -qx "$cpu_default" cpu_list.txt; then
-              new_def="$(head -n1 cpu_list.txt)"
-              [ -n "$new_def" ] && yq -i ".on.workflow_dispatch.inputs.CPU.default = \"$new_def\"" "$WF_FILE"
+            # 重新填充 options
+            if [ -s "$LIST_FILE" ]; then
+              while read -r item; do
+                yq eval -i ".on.workflow_dispatch.inputs.${NAME}.options += [\"${item}\"]" "$WF_FILE"
+              done < "$LIST_FILE"
             fi
-          fi
-          if [ -s xml_names.txt ]; then
-            feil_default="$(yq -r '.on.workflow_dispatch.inputs.FEIL.default // ""' "$WF_FILE")"
-            if [ -n "$feil_default" ] && ! grep -qx "$feil_default" xml_names.txt; then
-              new_def="$(head -n1 xml_names.txt)"
-              [ -n "$new_def" ] && yq -i ".on.workflow_dispatch.inputs.FEIL.default = \"$new_def\"" "$WF_FILE"
-            fi
-          fi
 
-      - name: Commit and push if changed
+            # 校验并更新 default
+            DEF_PATH=".on.workflow_dispatch.inputs.${NAME}.default"
+            CUR=$(yq eval -r "${DEF_PATH} // \"\"" "$WF_FILE")
+            if ! grep -qxF "$CUR" "$LIST_FILE"; then
+              NEW=$(head -n1 "$LIST_FILE")
+              [ -n "$NEW" ] && yq eval -i "${DEF_PATH} = \"${NEW}\"" "$WF_FILE"
+            fi
+          done
+
+      - name: Commit & push if changed
         shell: bash
         run: |
           set -Eeuo pipefail
-          if git status --porcelain | grep -q .; then
+          # 如果没有变更就退出
+          git diff --quiet || {
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add "$WF_FILE"
             git commit -m "chore: auto-update CPU and FEIL options"
-            # Push using PAT_TOKEN
             git remote set-url origin https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}
             git push origin HEAD:main
-          else
-            echo "No changes to commit."
-          fi
+          }
