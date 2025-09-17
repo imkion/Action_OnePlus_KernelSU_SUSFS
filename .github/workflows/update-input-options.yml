@@ -14,164 +14,144 @@ jobs:
     env:
       WF_FILE: ".github/workflows/Build-SukiSU-Ultra.yml"
       UPSTREAM_REPO: "OnePlusOSS/kernel_manifest"
+      # 优先使用 PAT_TOKEN，不存在则回退到 GITHUB_TOKEN
+      GH_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
 
     steps:
       - name: Checkout with PAT
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.PAT_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN || github.token }}
           fetch-depth: 0
 
       - name: Install dependencies
+        shell: bash
         run: |
           set -Eeuo pipefail
           sudo apt-get update -y
-          sudo apt-get install -y jq repo
+          sudo apt-get install -y jq curl
 
-      - name: Generate CPU & FEIL lists
+      - name: Generate CPU & FEIL lists safely
+        shell: bash
         run: |
           set -Eeuo pipefail
-          
-          # Generate CPU list from branches containing sm[0-9]+
-          echo "🔍 Fetching branches from ${UPSTREAM_REPO}..."
+
+          # 获取所有分支名称（去掉 refs/heads/ 并清理 CR）
           git ls-remote --heads "https://github.com/${UPSTREAM_REPO}.git" \
-            | sed 's#refs/heads/##' | tr -d '\r' > branches.txt
-          
-          # Extract CPU platforms and trim any CR characters
-          grep -E 'sm[0-9]+' branches.txt | sed 's#.*/##' | tr -d '\r' | sort -u > cpu_list.txt
-          
-          echo "📱 Found $(wc -l < cpu_list.txt) CPU platforms"
-          
-          # Generate FEIL list from XML files
-          echo "🔍 Fetching XML files from all branches..."
+            | awk '{print $2}' \
+            | sed 's#^refs/heads/##' \
+            | sed 's/\r$//' > branches.all.txt
+
+          # CPU：先取最后一段分支名，再匹配 sm[0-9]+
+          awk -F'/' '{print $NF}' branches.all.txt \
+            | grep -E '^sm[0-9]+' || true \
+            | sort -u > cpu_list.txt
+
+          # FEIL：遍历每个分支，列出 .xml 的基名（URL 编码 + JSON 校验）
           : > xml_names.txt
+
+          # 仅当 GH_TOKEN 非空时再组装 Authorization 头
+          declare -a auth
+          if [[ -n "${GH_TOKEN:-}" ]]; then
+            auth=(-H "Authorization: Bearer $GH_TOKEN")
+          else
+            auth=()
+          fi
+
           while IFS= read -r branch; do
             [[ -z "$branch" ]] && continue
-            
-            # Properly URL-encode branch name using jq
-            ref_enc=$(echo "$branch" | jq -rR '@uri')
+
+            # URL 编码 ref（包括斜杠）
+            ref_enc="$(jq -rn --arg s "$branch" '$s|@uri')"
             [[ -z "$ref_enc" ]] && continue
-            
-            echo "  Processing branch: $branch"
-            resp=$(curl -sS -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
-                       -H "Accept: application/vnd.github+json" \
-                       "https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1" \
-                      || true)
-            
-            # Validate JSON response before processing
-            if echo "$resp" | jq empty 2>/dev/null; then
-              echo "$resp" | jq -r '(.tree//[])[]
-                     | select(.type=="blob" and .path|endswith(".xml"))
-                     | .path' \
-                | xargs -r -n1 basename -s .xml >> xml_names.txt
-            else
-              echo "  ⚠️  Invalid JSON response for branch $branch, skipping"
+
+            # 获取树，失败不终止
+            resp="$(curl -fsS \
+              "${auth[@]}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${UPSTREAM_REPO}/git/trees/${ref_enc}?recursive=1" \
+              || true)"
+
+            # JSON 校验
+            if ! jq -e . >/dev/null 2>&1 <<<"$resp"; then
+              echo "warn: invalid JSON for branch=$branch, skip" >&2
+              continue
             fi
+
+            # 提取 .xml 路径并取基名
+            jq -r '(.tree // [])[]
+                   | select(.type=="blob" and (.path|endswith(".xml")))
+                   | .path' <<<"$resp" \
+              | xargs -r -n1 basename -s .xml >> xml_names.txt
+
+            # 节流避免限流
             sleep 0.2
-          done < branches.txt
-          
-          # Remove duplicates and CR characters
-          sort -u xml_names.txt | tr -d '\r' > xml_names_clean.txt
-          mv xml_names_clean.txt xml_names.txt
-          
-          echo "📄 Found $(wc -l < xml_names.txt) unique XML configurations"
+          done < branches.all.txt
 
-      - name: Replace CPU options in workflow
+          sort -u xml_names.txt -o xml_names.txt
+
+          echo "CPU candidates: $(wc -l < cpu_list.txt || echo 0)"
+          echo "FEIL candidates: $(wc -l < xml_names.txt || echo 0)"
+
+      - name: Replace CPU options (only inside markers, preserve others)
+        shell: bash
         run: |
           set -Eeuo pipefail
-          
-          # Check if CPU list is empty
-          if [[ ! -s cpu_list.txt ]]; then
-            echo "⚠️  CPU list is empty, skipping CPU options replacement to preserve existing content"
+          if ! grep -q '# CPU_OPTIONS_START' "$WF_FILE" || ! grep -q '# CPU_OPTIONS_END' "$WF_FILE"; then
+            echo "warn: CPU markers not found. Skip CPU replacement."
             exit 0
           fi
-          
-          # Check if markers exist in target file
-          if ! grep -q "# CPU_OPTIONS_START" "$WF_FILE" || ! grep -q "# CPU_OPTIONS_END" "$WF_FILE"; then
-            echo "⚠️  CPU option markers not found in $WF_FILE, skipping replacement"
-            exit 0
-          fi
-          
-          # Detect indentation from the START marker line
-          cpu_indent=$(grep -n "# CPU_OPTIONS_START" "$WF_FILE" | head -1 | sed 's/^[0-9]*://' | sed 's/# CPU_OPTIONS_START.*//' | cat -A | sed 's/\$$//')
-          echo "🔧 Detected CPU indentation: '${cpu_indent}' (length: ${#cpu_indent})"
-          
-          # Build replacement content (without markers)
-          {
-            echo "${cpu_indent}options:"
-            while IFS= read -r soc; do
-              [[ -n "$soc" ]] && echo "${cpu_indent}  - $soc"
-            done < cpu_list.txt
-          } > cpu_content.txt
-          
-          echo "📝 Replacing CPU options content between markers..."
-          
-          # Use precise sed to replace only content between markers
-          sed -i "/# CPU_OPTIONS_START/,/# CPU_OPTIONS_END/{
-            /# CPU_OPTIONS_START/{
-              r cpu_content.txt
-              n
-            }
-            /# CPU_OPTIONS_END/!d
-          }" "$WF_FILE"
-          
-          echo "✅ CPU options replacement completed"
 
-      - name: Replace FEIL options in workflow
+          if [ -s cpu_list.txt ]; then
+            cpu_indent="$(sed -n '/# CPU_OPTIONS_START/ { s/^\([[:space:]]*\).*/\1/p; q }' "$WF_FILE")"
+            {
+              echo "${cpu_indent}options:"
+              while IFS= read -r soc; do
+                [[ -n "$soc" ]] && echo "${cpu_indent}  - $soc"
+              done < cpu_list.txt
+            } > cpu_content.txt
+
+            # 清空标记间旧内容（保留标记行），紧接 START 插入新内容
+            sed -i "/# CPU_OPTIONS_START/,/# CPU_OPTIONS_END/{//!d}" "$WF_FILE"
+            sed -i "/# CPU_OPTIONS_START/r cpu_content.txt" "$WF_FILE"
+          else
+            echo "warn: cpu_list.txt is empty. Preserve existing CPU options."
+          fi
+
+      - name: Replace FEIL options (only inside markers, preserve others)
+        shell: bash
         run: |
           set -Eeuo pipefail
-          
-          # Check if FEIL list is empty
-          if [[ ! -s xml_names.txt ]]; then
-            echo "⚠️  FEIL list is empty, skipping FEIL options replacement to preserve existing content"
+          if ! grep -q '# FEIL_OPTIONS_START' "$WF_FILE" || ! grep -q '# FEIL_OPTIONS_END' "$WF_FILE"; then
+            echo "warn: FEIL markers not found. Skip FEIL replacement."
             exit 0
           fi
-          
-          # Check if markers exist in target file
-          if ! grep -q "# FEIL_OPTIONS_START" "$WF_FILE" || ! grep -q "# FEIL_OPTIONS_END" "$WF_FILE"; then
-            echo "⚠️  FEIL option markers not found in $WF_FILE, skipping replacement"
-            exit 0
+
+          if [ -s xml_names.txt ]; then
+            feil_indent="$(sed -n '/# FEIL_OPTIONS_START/ { s/^\([[:space:]]*\).*/\1/p; q }' "$WF_FILE")"
+            {
+              echo "${feil_indent}options:"
+              while IFS= read -r name; do
+                [[ -n "$name" ]] && echo "${feil_indent}  - $name"
+              done < xml_names.txt
+            } > feil_content.txt
+
+            sed -i "/# FEIL_OPTIONS_START/,/# FEIL_OPTIONS_END/{//!d}" "$WF_FILE"
+            sed -i "/# FEIL_OPTIONS_START/r feil_content.txt" "$WF_FILE"
+          else
+            echo "warn: xml_names.txt is empty. Preserve existing FEIL options."
           fi
-          
-          # Detect indentation from the START marker line
-          feil_indent=$(grep -n "# FEIL_OPTIONS_START" "$WF_FILE" | head -1 | sed 's/^[0-9]*://' | sed 's/# FEIL_OPTIONS_START.*//' | cat -A | sed 's/\$$//')
-          echo "🔧 Detected FEIL indentation: '${feil_indent}' (length: ${#feil_indent})"
-          
-          # Build replacement content (without markers)
-          {
-            echo "${feil_indent}options:"
-            while IFS= read -r xml; do
-              [[ -n "$xml" ]] && echo "${feil_indent}  - $xml"
-            done < xml_names.txt
-          } > feil_content.txt
-          
-          echo "📝 Replacing FEIL options content between markers..."
-          
-          # Use precise sed to replace only content between markers
-          sed -i "/# FEIL_OPTIONS_START/,/# FEIL_OPTIONS_END/{
-            /# FEIL_OPTIONS_START/{
-              r feil_content.txt
-              n
-            }
-            /# FEIL_OPTIONS_END/!d
-          }" "$WF_FILE"
-          
-          echo "✅ FEIL options replacement completed"
 
       - name: Commit & push if changed
+        shell: bash
         run: |
           set -Eeuo pipefail
-          
-          # Check if the target workflow file has actually changed
-          if git diff --quiet "$WF_FILE"; then
+          if git diff --quiet -- "$WF_FILE"; then
             echo "✅ No changes detected in $WF_FILE, skipping commit"
-            exit 0
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$WF_FILE"
+            git commit -m "chore: update CPU and FEIL options (marker-safe, token fallback)"
+            git push https://${GH_TOKEN}@github.com/${{ github.repository }} HEAD:main
           fi
-          
-          echo "📝 Changes detected in $WF_FILE, committing..."
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$WF_FILE"
-          git commit -m "chore: update CPU and FEIL options"
-          git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:main
-          echo "🚀 Changes pushed successfully"
