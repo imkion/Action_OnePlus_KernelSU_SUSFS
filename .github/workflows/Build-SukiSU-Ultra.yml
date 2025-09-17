@@ -2,8 +2,9 @@ name: Build SukiSU Ultra
 on:
   workflow_dispatch:
     inputs:
+      
       CPU:
-        description: "分支（SoC平台）"
+        description: 分支（SoC平台）
         type: choice
         required: true
         default: sm8550
@@ -19,11 +20,12 @@ on:
           - sm8650
           - sm8750
         # CPU_OPTIONS_END
+      
       FEIL:
-        description: "配置文件"
+        description: 配置文件
         type: choice
         required: true
-        default: ""
+        default: oneplus_ace3_v
         # FEIL_OPTIONS_START
         options:
           - JiuGeFaCai_oneplus_13_v
@@ -62,6 +64,7 @@ on:
           - oneplus_pad_3
           - oneplus_pad_pro_v
         # FEIL_OPTIONS_END
+      
       CPUD:
         description: "处理器代号"
         type: choice
@@ -74,6 +77,7 @@ on:
           - waipio
           - kalama
           - sun
+      
       ANDROID_VERSION:
         description: "内核安卓版本"
         type: choice
@@ -84,6 +88,7 @@ on:
           - android13
           - android14
           - android15
+      
       KERNEL_VERSION:
         description: "内核版本"
         type: choice
@@ -94,13 +99,15 @@ on:
           - "5.15"
           - "6.1"
           - "6.6"
+      
       KPM:
-        description: "是否启用KPM"
+        description: 是否启用KPM
         type: boolean
         required: true
         default: false
+      
       ZRAM:
-        description: "是否启用更多ZRAM算法"
+        description: 是否启用更多ZRAM算法
         type: boolean
         required: true
         default: true
@@ -113,6 +120,7 @@ jobs:
       CCACHE_HARDLINK: "true"
       CCACHE_MAXSIZE: 8G
     steps:
+      
       - name: 最大化构建空间
         if: ${{ github.event.inputs.KERNEL_VERSION != '6.1' }}
         uses: easimon/maximize-build-space@master
@@ -123,18 +131,21 @@ jobs:
           remove-android: 'true'
           remove-haskell: 'true'
           remove-codeql: 'true'
+      
       - name: 设置缓存环境
         run: |
           # 设置机型隔离缓存目录 #
           echo "CCACHE_DIR=$HOME/.ccache_${{ github.event.inputs.FEIL }}" >> $GITHUB_ENV
           mkdir -p "$HOME/.ccache_${{ github.event.inputs.FEIL }}"
           echo "缓存目录: $HOME/.ccache_${{ github.event.inputs.FEIL }}"
-      - name: "配置Git账户"
+      
+      - name: 配置Git账户
         run: |
           # 配置Git用户信息 #
           git config --global user.name "build"
           git config --global user.email "qq441791056@163.com"
-      - name: "配置APT缓存"
+      
+      - name: 配置APT缓存
         run: |
           # 设置APT缓存目录 #
           APT_CACHE_DIR="$HOME/apt-cache"
@@ -146,14 +157,16 @@ jobs:
           echo "Acquire::Check-Valid-Until \"false\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           echo "Acquire::Languages \"none\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           sudo chown -R $USER:$USER "$APT_CACHE_DIR"
-      - name: "恢复APT缓存"
+      
+      - name: 恢复APT缓存
         uses: actions/cache@v3
         with:
           path: ${{ env.HOME }}/apt-cache
           key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/Build SukiSU Ultra.yml') }}
           restore-keys: |
             ${{ runner.os }}-apt-
-      - name: "安装构建依赖"
+      
+      - name: 安装构建依赖
         run: |
           # 安装编译依赖项 #
           sudo rm -f /var/lib/apt/lists/lock /var/lib/dpkg/lock
@@ -166,7 +179,8 @@ jobs:
             build-essential flex bison libssl-dev \
             libncurses-dev liblz4-tool zlib1g-dev \
             libxml2-utils rsync unzip
-      - name: "恢复ccache缓存"
+      
+      - name: 恢复ccache缓存
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
@@ -174,9 +188,10 @@ jobs:
           restore-keys: |
             ccache-${{ runner.os }}-${{ github.event.inputs.FEIL }}-
             ccache-${{ runner.os }}-
-      - name: "初始化ccache"
+      
+      - name: 初始化ccache
         run: |
-          # 初始化ccache
+          # 初始化ccache #
           INIT_FLAG="${{ env.CCACHE_DIR }}/.ccache_initialized"
 
           if command -v ccache >/dev/null 2>&1; then
@@ -191,9 +206,10 @@ jobs:
           else
             echo "未找到ccache命令，跳过初始化"
           fi
-          # 显示缓存统计
+          # 显示缓存统计 #
           ccache -s
           echo "ccache初始化流程完成"
+      
       - name: 初始化repo
         run: |
           # 下载repo工具 #
@@ -202,31 +218,63 @@ jobs:
           chmod a+x ~/repo
           sudo mv ~/repo /usr/local/bin/repo
           echo "repo工具安装完成"
-      - name: "克隆内核源码"
-        run: "# 初始化内核仓库 #\nmkdir kernel_workspace && cd kernel_workspace\n\nrepo init -u https://github.com/OnePlusOSS/kernel_manifest.git \\\n  -b refs/heads/oneplus/${{ github.event.inputs.CPU }} \\\n  -m ${{ github.event.inputs.FEIL }}.xml --depth=1\n# 使用最大线程同步代码库 #\nrepo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync\n\n# 清理abi导出和-dirty标记\necho \"Kernel version:-${{ github.event.inputs.ANDROID_VERSION }}-furlc\"\nrm kernel_platform/common/android/abi_gki_protected_exports_* || echo \"No protected exports!\"\nrm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo \"No protected exports!\"\nsed -i 's/ -dirty//g' kernel_platform/common/scripts/setlocalversion\nsed -i 's/ -dirty//g' kernel_platform/msm-kernel/scripts/setlocalversion\nsed -i 's/ -dirty//g' kernel_platform/external/dtc/scripts/setlocalversion\nsed -i '$i res=$(echo \"$res\" | sed '\\''s/-dirty//g'\\'')' kernel_platform/common/scripts/setlocalversion\nsed -i '$i res=$(echo \"$res\" | sed '\\''s/-dirty//g'\\'')' kernel_platform/msm-kernel/scripts/setlocalversion\nsed -i '$i res=$(echo \"$res\" | sed '\\''s/-dirty//g'\\'')' kernel_platform/external/dtc/scripts/setlocalversion\nsed -i '$s|echo \"\\$res\"|echo \"-${{ github.event.inputs.ANDROID_VERSION }}-furlc\"|' kernel_platform/common/scripts/setlocalversion            \nsed -i '$s|echo \"\\$res\"|echo \"-${{ github.event.inputs.ANDROID_VERSION }}-furlc\"|' kernel_platform/msm-kernel/scripts/setlocalversion\nsed -i '$s|echo \"\\$res\"|echo \"-${{ github.event.inputs.ANDROID_VERSION }}-furlc\"|' kernel_platform/external/dtc/scripts/setlocalversion\n"
+      
+      - name: 克隆内核源码
+        run: |
+          # 正在初始化内核仓库 #
+          cd kernel_workspace
+
+          repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
+          # 使用最大线程同步代码库 #
+          repo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync
+
+          echo "Kernel version:-${{ github.event.inputs.ANDROID_VERSION }}-FurLC"
+          rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
+          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
+          sed -i 's/ -dirty//g' kernel_platform/common/scripts/setlocalversion
+          sed -i 's/ -dirty//g' kernel_platform/msm-kernel/scripts/setlocalversion
+          sed -i 's/ -dirty//g' kernel_platform/external/dtc/scripts/setlocalversion
+          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/common/scripts/setlocalversion
+          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/msm-kernel/scripts/setlocalversion
+          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/external/dtc/scripts/setlocalversion
+          sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-FurLC"|' kernel_platform/common/scripts/setlocalversion            
+          sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-FurLC"|' kernel_platform/msm-kernel/scripts/setlocalversion
+          sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-FurLC"|' kernel_platform/external/dtc/scripts/setlocalversion
+          
       - name: 注入KernelSU-SukiSU Ultra
-        run: "# 设置SukiSU Ultra #\nmkdir -p kernel_workspace/kernel_platform\n\ncd kernel_workspace/kernel_platform\n# 下载并执行设置脚本 #\ncurl -LSs \"https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh\" | bash -s susfs-main\n\ncd KernelSU\n# 下载KernelSU设置工具 #\ncurl -L -o sukisu_setup.bin \nchmod +x sukisu_setup.bin\n\n# 验证Makefile存在\nif [ ! -f \"kernel/Makefile\" ]; then\n  echo \"Error：缺少kernel/Makefile\"\n  ls -la\n  exit 1\nfi\n\n./sukisu_setup.bin\nrm -rf ./sukisu_setup.bin\n\necho \"SukiSU Ultra配置完成\"\n"
+        run: |
+          # 设置SukiSU Ultra #
+          cd kernel_workspace/kernel_platform
+          
+          # 下载并执行设置脚本 #
+          echo "[SukiSU] 开始注入（susfs-main）"
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" | bash -s susfs-main
+      
       - name: 设置susfs并应用主补丁
         run: |
-          set -e
-          # 下载相关内容
+          # 下载相关内容 #
           cd kernel_workspace
+          # 下载SUSFS补丁 #
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git \
             -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone --depth=1 https://github.com/SukiSU-Ultra/SukiSU_patch.git
-          wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 3 https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki.patch
-          wget --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 3 https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ogki2gki_c99fix.patch
-          # 添加susfs补丁
+
+          cd kernel_platform
+          # 复制补丁文件 #
+          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
+          
+
+          
+          # 添加susfs补丁 #
           cd kernel_platform
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
           cp ../SukiSU_patch/hooks/syscall_hooks.patch ./common/
           cp ../SukiSU_patch/69_hide_stuff.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
-          # 添加oki补丁
-          cp ../ogki2gki.patch ./common/
-          cp ../ogki2gki_c99fix.patch ./common/
-          # 添加zram补丁
+
+
+          # 添加zram补丁 #
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
             cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux
             cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib
@@ -241,11 +289,12 @@ jobs:
             sed -i '/#include <trace\/hooks\/fs.h>/d' "$PATCH_FILE"
             patch -p1 < "$PATCH_FILE" || true
           fi
-          # 应用susfs补丁
+          # 应用susfs补丁 #
           patch -p1 -F 3 < syscall_hooks.patch || true
           patch -p1 -F 3 < 69_hide_stuff.patch
           patch -p1 -F 3 < ogki2gki_c99fix.patch
           echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
+      
       - name: 应用zram相关补丁
         run: "set -e\ncd kernel_workspace/kernel_platform/common\nPATCH_LIST=(\n  \"lz4kd\"\n  \"lz4k_oplus\"\n)\nPATCH_BASE=../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}\nfor PATCH_NAME in \"${PATCH_LIST[@]}\"; do\n  PATCH_FILE=\"$PATCH_BASE/$PATCH_NAME.patch\"\n  LOCAL_PATCH=\"./$PATCH_NAME.patch\"\n  if [[ -f \"$PATCH_FILE\" ]]; then\n    echo \"\U0001F7E2 应用补丁: $PATCH_NAME\"\n    cp \"$PATCH_FILE\" \"$LOCAL_PATCH\"\n    patch -p1 -F 3 < \"$LOCAL_PATCH\" || echo \"⚠️ $PATCH_NAME patch失败(已应用/冲突可忽略)\"\n  else\n    echo \"❗ 未找到$PATCH_NAME补丁 (kernel version ${{ github.event.inputs.KERNEL_VERSION }})\"\n  fi\ndone\n"
       - name: 写入SUSFS与ZRAM内核配置及性能优化
