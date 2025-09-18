@@ -6,7 +6,7 @@
 ## 📖 食用说明
 
 - **一加内核开源地址**：[OnePlusOSS](https://github.com/OnePlusOSS/kernel_manifest)
-- **单 boot 补丁**：`ogki2gki.patch`（优化版）/`ogki2gki_c99fix.patch`（c99兼容版）
+- **单 boot 补丁**：`ogki2gki.patch`（优化版）
 
 ---
 
