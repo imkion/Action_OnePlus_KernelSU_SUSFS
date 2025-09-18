@@ -252,30 +252,25 @@ jobs:
       
       - name: 设置susfs并应用主补丁
         run: |
-          # 下载相关内容 #
           cd kernel_workspace
-          # 下载SUSFS补丁 #
+          
+          # 下载补丁文件 #
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git \
             -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone --depth=1 https://github.com/SukiSU-Ultra/SukiSU_patch.git
 
           cd kernel_platform
-          # 复制补丁文件 #
+          # 复制susfs补丁 #
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
-          
-
-          
-          # 添加susfs补丁 #
-          cd kernel_platform
-          cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
-          cp ../SukiSU_patch/hooks/syscall_hooks.patch ./common/
+          cp ../SukiSU_patch/hooks/ksu_hooks.patch ./common/
           cp ../SukiSU_patch/69_hide_stuff.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
-
-          # 添加zram补丁 #
+          # 复制zram补丁 #
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
+            cp ../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4kd.patch ./common/
+            cp ../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}/lz4k_oplus.patch ./common/
             cp -r ../SukiSU_patch/other/zram/lz4k/include/linux/* ./common/include/linux
             cp -r ../SukiSU_patch/other/zram/lz4k/lib/* ./common/lib
             cp -r ../SukiSU_patch/other/zram/lz4k/crypto/* ./common/crypto
@@ -283,47 +278,28 @@ jobs:
           fi
 
           cd ./common/
-          PATCH_FILE=50_add_susfs_in_gki-${{ inputs.ANDROID_VERSION }}-${{ inputs.KERNEL_VERSION }}.patch
-          if [[ -f "$PATCH_FILE" ]]; then
-            sed -i 's/-32,12 +32,38/-32,11 +32,37/g' "$PATCH_FILE"
-            sed -i '/#include <trace\/hooks\/fs.h>/d' "$PATCH_FILE"
-            patch -p1 < "$PATCH_FILE" || true
-          fi
           # 应用susfs补丁 #
-          patch -p1 -F 3 < syscall_hooks.patch || true
+          patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
           patch -p1 -F 3 < 69_hide_stuff.patch
-          patch -p1 -F 3 < ogki2gki_c99fix.patch
-          echo "✅ SUSFS 和 syscall_hooks patch 应用完成"
+          patch -p1 -F 3 < ksu_hooks.patch
+          echo "SUSFS补丁应用完成"
       
-      - name: 应用zram相关补丁
-        run: "set -e\ncd kernel_workspace/kernel_platform/common\nPATCH_LIST=(\n  \"lz4kd\"\n  \"lz4k_oplus\"\n)\nPATCH_BASE=../../SukiSU_patch/other/zram/zram_patch/${{ github.event.inputs.KERNEL_VERSION }}\nfor PATCH_NAME in \"${PATCH_LIST[@]}\"; do\n  PATCH_FILE=\"$PATCH_BASE/$PATCH_NAME.patch\"\n  LOCAL_PATCH=\"./$PATCH_NAME.patch\"\n  if [[ -f \"$PATCH_FILE\" ]]; then\n    echo \"\U0001F7E2 应用补丁: $PATCH_NAME\"\n    cp \"$PATCH_FILE\" \"$LOCAL_PATCH\"\n    patch -p1 -F 3 < \"$LOCAL_PATCH\" || echo \"⚠️ $PATCH_NAME patch失败(已应用/冲突可忽略)\"\n  else\n    echo \"❗ 未找到$PATCH_NAME补丁 (kernel version ${{ github.event.inputs.KERNEL_VERSION }})\"\n  fi\ndone\n"
-      - name: 写入SUSFS与ZRAM内核配置及性能优化
-        run: |
-          set -e
-          cd kernel_workspace/kernel_platform
-          DEFCONFIG=./common/arch/arm64/configs/gki_defconfig
+          # 应用ZRAM补丁
+          if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
+            patch -p1 -F 3 < lz4kd.patch || true
+            patch -p1 -F 3 < lz4k_oplus.patch || true
+            echo "ZRAM补丁应用完成"
+          fi
 
-          # SUSFS/KSU 基础配置
-          echo "# SUSFS/KSU基础配置"                                  >> "$DEFCONFIG"
-          echo "CONFIG_KSU=y"                                        >> "$DEFCONFIG"  # 启用KernelSU
-          echo "CONFIG_KPM=y"                                        >> "$DEFCONFIG"  # 启用Kernel Patch Manager
-          echo "CONFIG_KSU_SUSFS_SUS_SU=n"                           >> "$DEFCONFIG"  # SUSFS su兼容模式（关闭）
-          echo "CONFIG_KSU_MANUAL_HOOK=y"                            >> "$DEFCONFIG"  # 手动挂钩
-          echo "CONFIG_KSU_SUSFS=y"                                  >> "$DEFCONFIG"  # 启用SUSFS
-          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y"                  >> "$DEFCONFIG"  # Magic Mount特性
-          echo "CONFIG_KSU_SUSFS_SUS_PATH=y"                         >> "$DEFCONFIG"  # SUSFS路径支持
-          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y"                        >> "$DEFCONFIG"  # SUSFS挂载点支持
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y"   >> "$DEFCONFIG"  # 自动添加默认挂载
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y"          >> "$DEFCONFIG"  # 自动添加BIND挂载
-          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y"                        >> "$DEFCONFIG"  # 启用SUSFS KSTAT支持
-          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n"                    >> "$DEFCONFIG"  # 关闭SUSFS OverlayFS
-          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y"                       >> "$DEFCONFIG"  # 尝试自动卸载
-          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> "$DEFCONFIG" # BIND挂载自动卸载
-          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y"                      >> "$DEFCONFIG"  # 伪装UNAME
-          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y"                       >> "$DEFCONFIG"  # 启用日志
-          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y"           >> "$DEFCONFIG"  # 隐藏KSU/SUSFS符号
-          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y"      >> "$DEFCONFIG"  # 伪装cmdline/bootconfig
-          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y"                    >> "$DEFCONFIG"  # 打开重定向支持
+          echo "所有补丁应用完成"
+      
+      - name: 写入内核配置
+        run: |
+          cd kernel_workspace/kernel_platform
+
+          # SUSFS基础配置
+          
+
 
           # 如果启用ZRAM，写入ZRAM相关配置
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
