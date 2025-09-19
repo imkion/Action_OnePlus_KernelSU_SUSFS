@@ -2,7 +2,6 @@ name: Build SukiSU Ultra
 on:
   workflow_dispatch:
     inputs:
-      
       CPU:
         description: 分支（SoC平台）
         type: choice
@@ -119,8 +118,8 @@ jobs:
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
       CCACHE_MAXSIZE: 8G
+    
     steps:
-      
       - name: 最大化构建空间
         if: ${{ github.event.inputs.KERNEL_VERSION != '6.1' }}
         uses: easimon/maximize-build-space@master
@@ -169,16 +168,16 @@ jobs:
       - name: 安装构建依赖
         run: |
           # 安装编译依赖项 #
-          sudo rm -f /var/lib/apt/lists/lock /var/lib/dpkg/lock
           APT_CACHE_DIR="$HOME/apt-cache"
           mkdir -p "$APT_CACHE_DIR/lists/partial"
           # 更新包列表并安装必要工具 #
-          sudo apt -o Dir::Cache="$APT_CACHE_DIR" update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt -o Dir::Cache="$APT_CACHE_DIR" install -yq --no-install-recommends \
+          sudo apt-get -o Dir::Cache="$APT_CACHE_DIR" update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get -o Dir::Cache="$APT_CACHE_DIR" install -yq --no-install-recommends \
             python3 git curl ccache libelf-dev \
             build-essential flex bison libssl-dev \
             libncurses-dev liblz4-tool zlib1g-dev \
-            libxml2-utils rsync unzip
+            libxml2-utils rsync unzip bc \
+            binutils-aarch64-linux-gnu
       
       - name: 恢复ccache缓存
         uses: actions/cache@v3
@@ -193,7 +192,6 @@ jobs:
         run: |
           # 初始化ccache #
           INIT_FLAG="${{ env.CCACHE_DIR }}/.ccache_initialized"
-
           if command -v ccache >/dev/null 2>&1; then
             if [ ! -f "$INIT_FLAG" ]; then
               mkdir -p "${{ env.CCACHE_DIR }}"
@@ -203,12 +201,10 @@ jobs:
             else
               echo "ccache已存在，跳过初始化"
             fi
+            ccache -s
           else
             echo "未找到ccache命令，跳过初始化"
           fi
-          # 显示缓存统计 #
-          ccache -s
-          echo "ccache初始化流程完成"
       
       - name: 初始化repo
         run: |
@@ -223,7 +219,6 @@ jobs:
         run: |
           # 正在初始化内核仓库 #
           cd kernel_workspace
-
           repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
           # 使用最大线程同步代码库 #
           repo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync
@@ -245,7 +240,6 @@ jobs:
         run: |
           # 设置SukiSU Ultra #
           cd kernel_workspace/kernel_platform
-          
           # 下载并执行设置脚本 #
           echo "[SukiSU] 开始注入（susfs-main）"
           curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" | bash -s susfs-main
@@ -253,16 +247,14 @@ jobs:
       - name: 设置susfs并应用主补丁
         run: |
           cd kernel_workspace
-          
           # 下载补丁文件 #
-          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git \
-            -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
+          git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone --depth=1 https://github.com/SukiSU-Ultra/SukiSU_patch.git
+          curl -L -o kernel_platform/common/ksu_manual_security_hooks_v1.4.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ksu_manual_security_hooks_v1.4.patch
 
           cd kernel_platform
           # 复制susfs补丁 #
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
-          cp ../SukiSU_patch/hooks/ksu_hooks.patch ./common/
           cp ../SukiSU_patch/69_hide_stuff.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
@@ -281,161 +273,217 @@ jobs:
           # 应用susfs补丁 #
           patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
           patch -p1 -F 3 < 69_hide_stuff.patch
-          patch -p1 -F 3 < ksu_hooks.patch
+          patch -p1 -F 3 < ksu_manual_security_hooks_v1.4.patch
           echo "SUSFS补丁应用完成"
       
-          # 应用ZRAM补丁
+          # 应用ZRAM补丁 #
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
             patch -p1 -F 3 < lz4kd.patch || true
             patch -p1 -F 3 < lz4k_oplus.patch || true
             echo "ZRAM补丁应用完成"
           fi
-
           echo "所有补丁应用完成"
       
       - name: 写入内核配置
         run: |
           cd kernel_workspace/kernel_platform
+          # Hooks基础配置 #
+          echo "CONFIG_KSU=y" >> ./common/arch/arm64/configs/gki_defconfig
 
-          # SUSFS基础配置
+          # KPM基础配置 #
+          if [[ "${{ github.event.inputs.KPM }}" == "true" ]]; then
+            echo "CONFIG_KPM=y" >> ./common/arch/arm64/configs/gki_defconfig
+          fi
+
+          # VFS基础配置 #
+          echo "CONFIG_KSU_SUSFS_SUS_SU=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_LSM_SECURITY_HOOKS=n" >> ./common/arch/arm64/configs/gki_defconfig
           
+          # SUSFS基础配置 #
+          echo "CONFIG_KSU_SUSFS=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_PATH=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_KSTAT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SUS_OVERLAYFS=n" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_TRY_UMOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SPOOF_UNAME=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_ENABLE_LOG=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y" >> ./common/arch/arm64/configs/gki_defconfig
+          echo "CONFIG_KSU_SUSFS_OPEN_REDIRECT=y" >> ./common/arch/arm64/configs/gki_defconfig
 
-
-          # 如果启用ZRAM，写入ZRAM相关配置
+          # 如果启用ZRAM，写入ZRAM相关配置 #
           if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
             # 启用ZRAM压缩算法支持
-            echo "CONFIG_CRYPTO_LZ4KD=y"      >> "$DEFCONFIG"  # LZ4KD压缩算法
-            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y" >> "$DEFCONFIG"  # OPLUS定制LZ4K
-            echo "CONFIG_ZRAM_WRITEBACK=y"    >> "$DEFCONFIG"  # 启用ZRAM写回支持
+            echo "CONFIG_CRYPTO_LZ4KD=y" >> ./common/arch/arm64/configs/gki_defconfig
+            echo "CONFIG_CRYPTO_LZ4K_OPLUS=y" >> ./common/arch/arm64/configs/gki_defconfig
+            echo "CONFIG_ZRAM_WRITEBACK=y" >> ./common/arch/arm64/configs/gki_defconfig
+          fi
+
+          # 5.10和5.15系内核LTO配置 #
+          if [ "${{ github.event.inputs.KERNEL_VERSION }}" = "5.10" ] || [ "${{ github.event.inputs.KERNEL_VERSION }}" = "5.15" ]; then
+            DEFCONFIG=./common/arch/arm64/configs/gki_defconfig
+            sed -i -e 's/^# CONFIG_LTO is not set/CONFIG_LTO=y/' \
+                   -e 's/^CONFIG_LTO=n/CONFIG_LTO=y/' "$DEFCONFIG"
+            grep -q '^CONFIG_LTO=y' "$DEFCONFIG" || echo 'CONFIG_LTO=y' >> "$DEFCONFIG"
+
+            sed -i -e '/^CONFIG_LTO_CLANG_\(THIN\|FULL\|NONE\)=/d' \
+                   -e '/^# CONFIG_LTO_CLANG_\(FULL\|NONE\) is not set/d' \
+                   -e 's/^# CONFIG_LTO_CLANG_THIN is not set/CONFIG_LTO_CLANG_THIN=y/' "$DEFCONFIG"
+            grep -q '^CONFIG_LTO_CLANG_THIN=y' "$DEFCONFIG" || printf 'CONFIG_LTO_CLANG_THIN=y\n' >> "$DEFCONFIG"
           fi
 
           # 删除check_defconfig
           sed -i 's/check_defconfig//' ./common/build.config.gki
-      - name: 注入sched_ext调度模块
-        if: ${{ github.event.inputs.KERNEL_VERSION == '6.6' }}
-        run: |
-          set -e
-          cd kernel_workspace/kernel_platform/
-          git clone --depth=1 https://github.com/HanKuCha/sched_ext.git
-          cp -r sched_ext/* common/kernel/sched
-          rm -rf sched_ext/.git
-          cd common/kernel/sched
+
       - name: 编译内核
         run: |
-          set -e
           cd kernel_workspace/kernel_platform/common
-          if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]]; then
+          export PATH="/usr/lib/ccache:$PATH"
+          
+          if [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "5.10" ]]; then
+            export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts-master/clang/host/linux-x86/clang-r416183b/bin:$PATH"
+            make -j"$(nproc --all)" LLVM_IAS=1 LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+                 CC="ccache clang" HOSTCC="ccache clang" HOSTCXX="ccache clang++" \
+                 RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
+                 PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole \
+                 LD=ld.lld HOSTLD=ld.lld O=out gki_defconfig all
+
+          elif [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "5.15" ]]; then
+            export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r450784e/bin:$PATH"
+            make -j"$(nproc --all)" LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+                 CC="ccache clang" HOSTCC="ccache clang" HOSTCXX="ccache clang++" \
+                 RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
+                 PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole \
+                 LD=ld.lld HOSTLD=ld.lld O=out gki_defconfig all
+            
+          elif [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.1" ]]; then
             export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r487747c/bin:$PATH"
-            export PATH="/usr/lib/ccache:$PATH"
-            make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole LD=ld.lld  HOSTLD=ld.lld O=out gki_defconfig all
+            make -j"$(nproc --all)" LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+                 CC="ccache clang" HOSTCC="ccache clang" HOSTCXX="ccache clang++" \
+                 RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
+                 PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole \
+                 LD=ld.lld HOSTLD=ld.lld O=out gki_defconfig all
+          
           elif [[ "${{ github.event.inputs.KERNEL_VERSION }}" == "6.6" ]]; then
             export PATH="$GITHUB_WORKSPACE/kernel_workspace/kernel_platform/prebuilts/clang/host/linux-x86/clang-r510928/bin:$PATH"
-            export PATH="/usr/lib/ccache:$PATH"
-            make -j$(nproc --all) LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole LD=ld.lld  HOSTLD=ld.lld O=out gki_defconfig all
+            make -j"$(nproc --all)" LLVM=1 ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- \
+                 CC="ccache clang" HOSTCC="ccache clang" HOSTCXX="ccache clang++" \
+                 RUSTC=../../prebuilts/rust/linux-x86/1.73.0b/bin/rustc \
+                 PAHOLE=../../prebuilts/kernel-build-tools/linux-x86/bin/pahole \
+                 LD=ld.lld HOSTLD=ld.lld O=out gki_defconfig all
+          
           else
-            cd $GITHUB_WORKSPACE/kernel_workspace
+            cd "$GITHUB_WORKSPACE/kernel_workspace"
             LTO=thin ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ github.event.inputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           fi
+
+          # 显示ccache统计信息
+          ccache -s
+          echo "内核编译完成"
+      
       - name: 制作AnyKernel3内核刷机包
         run: |
-          set -e
           git clone --depth=1 https://github.com/Kernel-SU/AnyKernel3 AnyKernel3-no_kpm
-          git clone --depth=1 https://github.com/Kernel-SU/AnyKernel3 AnyKernel3-kpm
-          rm -rf AnyKernel3-{kpm,no_kpm}/.git
-          rm -f AnyKernel3-{kpm,no_kpm}/push.sh
-          KERNEL_OUT_DIRS=(
-            "kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
-            "kernel_workspace/kernel_platform/bazel-out/k8-fastbuild/bin/msm-kernel/${{ github.event.inputs.CPUD }}_gki_kbuild_mixed_tree/"
-            "kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-gki/dist/"
-            "kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/arch/arm64/boot/"
-            "kernel_workspace/kernel_platform/out/msm-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.CPUD }}-gki/gki_kernel/common/arch/arm64/boot/"
-          )
-          image_path=""
-          for dir in "${KERNEL_OUT_DIRS[@]}"; do
-            if [[ -f "${dir}Image" ]]; then
-              image_path="${dir}Image"
-              break
-            fi
-          done
-          if [[ -z "$image_path" ]]; then
-            image_path=$(find kernel_workspace/kernel_platform/common/out/ -name "Image" | head -n 1)
-          fi
+          cp -a AnyKernel3-no_kpm AnyKernel3-kpm
+          rm -rf AnyKernel3-{no_kpm,kpm}/.git
+          
+          image_path=$(find "./kernel_workspace/kernel_platform/common/out/" -name "Image" -print -quit 2>/dev/null || true)
+          
           if [[ -n "$image_path" && -f "$image_path" ]]; then
-            cp "$image_path" AnyKernel3-no_kpm/Image
-            echo "IMAGE_PATH=$image_path" >> $GITHUB_ENV
+            echo "Image文件在: $image_path"
+            cp "$image_path" ./AnyKernel3-no_kpm/Image
           else
             echo "未找到 Image 文件，构建可能失败"
             exit 1
           fi
-      - name: Remove _uv suffix from FEIL
-        id: feil_clean
+      
+      - name: Compute artifact names
+        id: names
         run: |
-          set -e
           clean_feil="${{ github.event.inputs.FEIL }}"
-          clean_feil="${clean_feil%_v}"  # 去掉结尾的 _v（如果有）
-          clean_feil="${clean_feil%_u}"  # 去掉结尾的 _u（如果有）
-          echo "value=$clean_feil" >> $GITHUB_OUTPUT
+          clean_feil="${clean_feil%_v}"
+          clean_feil="${clean_feil%_u}"
+          echo "CLEAN_FEIL=$clean_feil" >> "$GITHUB_ENV"
+          
+          build_date="$(date +%Y%m%d)"
+          echo "BUILD_DATE=$build_date" >> "$GITHUB_ENV"
+
+          no_kpm="AnyKernel3_SukiSU_Ultra_${clean_feil}_NoKPM_${build_date}"
+
+          if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
+            no_kpm="${no_kpm}_lz4kd"
+          fi
+          kpm="AnyKernel3_SukiSU_Ultra_${clean_feil}_KPM_${build_date}"
+
+          echo "NO_KPM_NAME=$no_kpm" >> "$GITHUB_ENV"
+          echo "KPM_NAME=$kpm" >> "$GITHUB_ENV"
+      
       - name: 上传AnyKernel3 (No_KPM)
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_NoKPM
+          name: ${{ env.NO_KPM_NAME }}
           path: AnyKernel3-no_kpm/*
-      - name: 应用KPM补丁并制作KPM刷机包
+      
+      - name: 应用KPM补丁
+        if: ${{ github.event.inputs.KPM == 'true' }}
         run: |
-          set -e
-          echo "使用的 Image 路径是: $IMAGE_PATH"
-          cd "$(dirname "$IMAGE_PATH")"
-          cp Image $GITHUB_WORKSPACE/AnyKernel3-no_kpm/Image
-          curl --retry 3 -LO https://github.com/ShirkNeko/SukiSU_KernelPatch_patch/releases/download/0.11-beta/patch_linux
+          cd AnyKernel3-no_kpm
+          curl -LO https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.0/patch_linux
           chmod +x patch_linux
           ./patch_linux
-          rm -f Image
-          mv oImage Image
-          cp Image $GITHUB_WORKSPACE/AnyKernel3-kpm/Image
-          cp Image $GITHUB_WORKSPACE/kernel_workspace/kernel
+          cp oImage "$GITHUB_WORKSPACE/AnyKernel3-kpm/Image"
+          echo "KPM补丁应用完成"
+      
       - name: 上传AnyKernel3 (KPM)
+        if: ${{ github.event.inputs.KPM == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: AnyKernel3_SukiSU_Ultra_${{ env.KSUVER }}_${{ steps.feil_clean.outputs.value }}_KPM
+          name: ${{ env.KPM_NAME }}
           path: AnyKernel3-kpm/*
-      - name: 下载并解压zram内核模块
+      
+      - name: 提取ZRAM相关模块
         if: ${{ github.event.inputs.ZRAM == 'true' }}
+        id: extract_zram
         run: |
-          set -e
-          sudo apt install -y unzip
-          curl -s https://api.github.com/repos/FurLC/ZRAM-Module/releases/latest | \
-            grep "browser_download_url" | grep "ZRAM-Module-.*\.zip" | cut -d '"' -f 4 | xargs wget -N
-          unzip "$(ls -t ZRAM-Module-*.zip | head -1)" -d ZRAM-Module
-          zram1="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/dist/"
-          zram2="./kernel_workspace/kernel_platform/out/dist/"
-          zram3="./kernel_workspace/kernel_platform/out/vendor/oplus/kernel/mm/"
-          zram4="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/vendor_dlkm/"
-          zram5="./kernel_workspace/device/qcom/${{ github.event.inputs.CPUD }}-kernel/system_dlkm/flatten/lib/modules/"
-          zram6="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_mm/hybridswap_zram/"
-          zram7="./kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-gki/msm-kernel/mm/oplus_bsp_hybridswap_zram/"
-          target="./ZRAM-Module/zram/zram.ko"
-          for dir in "$zram1" "$zram2" "$zram3" "$zram4" "$zram5" "$zram6" "$zram7"; do
-            zram_path=$(find "$dir" -name "zram.ko" | head -n 1)
-            [ -n "$zram_path" ] && break
-          done
-          if [ -z "$zram_path" ]; then
-            zram_path=$(find "./kernel_workspace" -name "zram.ko" | head -n 1)
-          fi
-          if [ -n "$zram_path" ] && [ -f "$zram_path" ]; then
-            echo "ZRAM module file located at: $zram_path"
-            mkdir -p "$(dirname "$target")"
-            if [ "$(realpath "$zram_path")" != "$(realpath "$target")" ]; then
-              cp "$zram_path" "$target"
-            else
-              echo "源文件与目标相同，跳过复制"
-            fi
+          set -euo pipefail
+          # 在 workspace 下尽可能查找 zram.ko 与 crypto_zstdn.ko
+          zram_path=$(find "./kernel_workspace" -type f -name "zram.ko" -print -quit 2>/dev/null || true)
+          crypto_path=$(find "./kernel_workspace" -type f -name "crypto_zstdn.ko" -print -quit 2>/dev/null || true)
+
+          if [[ -n "${zram_path:-}" && -f "$zram_path" ]]; then
+            echo "找到 zram.ko: $zram_path"
+            echo "ZRAM_KO_PATH=$zram_path" >> $GITHUB_ENV
+            echo "HAS_ZRAM_KO=true" >> $GITHUB_ENV
           else
-            echo "未找到 zram.ko 文件，构建可能失败"
-            exit 1
+            echo "未找到 zram.ko"
+            echo "HAS_ZRAM_KO=false" >> $GITHUB_ENV
           fi
-      - name: 上传ZRAM-Module
+
+          if [[ -n "${crypto_path:-}" && -f "$crypto_path" ]]; then
+            echo "找到 crypto_zstdn.ko: $crypto_path"
+            echo "CRYPTO_ZSTDN_KO_PATH=$crypto_path" >> $GITHUB_ENV
+            echo "HAS_CRYPTO_ZSTDN_KO=true" >> $GITHUB_ENV
+          else
+            echo "未找到 crypto_zstdn.ko"
+            echo "HAS_CRYPTO_ZSTDN_KO=false" >> $GITHUB_ENV
+          fi
+      
+      - name: 上传 zram.ko
+        if: ${{ env.HAS_ZRAM_KO == 'true' }}
         uses: actions/upload-artifact@v4
-        if: ${{ github.event.inputs.ZRAM == 'true' }}
         with:
-          name: ZRAM-Module_${{ github.event.inputs.KERNEL_VERSION }}_${{ steps.feil_clean.outputs.value }}
-          path: ZRAM-Module/*
+          name: zram.ko_${{ env.CLEAN_FEIL }}_${{ env.BUILD_DATE }}
+          path: ${{ env.ZRAM_KO_PATH }}
+
+      - name: 上传 crypto_zstdn.ko
+        if: ${{ env.HAS_CRYPTO_ZSTDN_KO == 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: crypto_zstdn.ko_${{ env.CLEAN_FEIL }}_${{ env.BUILD_DATE }}
+          path: ${{ env.CRYPTO_ZSTDN_KO_PATH }}
