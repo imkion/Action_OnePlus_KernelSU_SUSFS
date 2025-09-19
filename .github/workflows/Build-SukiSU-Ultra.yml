@@ -403,7 +403,7 @@ jobs:
             exit 1
           fi
       
-      - name: Compute artifact names
+      - name: 设置产物名称
         id: names
         run: |
           clean_feil="${{ github.event.inputs.FEIL }}"
