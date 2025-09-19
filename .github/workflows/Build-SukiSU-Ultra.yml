@@ -250,7 +250,7 @@ jobs:
           # 下载补丁文件 #
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
           git clone --depth=1 https://github.com/SukiSU-Ultra/SukiSU_patch.git
-          curl -L -o kernel_platform/common/ksu_manual_security_hooks_v1.4.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ksu_manual_security_hooks_v1.4.patch
+          curl -L -o kernel_platform/common/ksu_scope_min_manual_hooks_v1.5.patch https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/ksu_scope_min_manual_hooks_v1.5.patch
 
           cd kernel_platform
           # 复制susfs补丁 #
@@ -273,7 +273,7 @@ jobs:
           # 应用susfs补丁 #
           patch -p1 < 50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch || true
           patch -p1 -F 3 < 69_hide_stuff.patch
-          patch -p1 -F 3 < ksu_manual_security_hooks_v1.4.patch
+          patch -p1 -F 3 < ksu_scope_min_manual_hooks_v1.5.patch
           echo "SUSFS补丁应用完成"
       
           # 应用ZRAM补丁 #
