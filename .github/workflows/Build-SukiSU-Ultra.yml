@@ -256,7 +256,7 @@ jobs:
           # 复制susfs补丁 #
           cp ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}.patch ./common/
           cp ../Action_OnePlus_KernelSU_SUSFS/ksu_scope_min_manual_hooks_v1.5.patch ./common/
-          cp ../SukiSU-Ultra/69_hide_stuff.patch ./common/
+          cp ../SukiSU_patch/69_hide_stuff.patch ./common/
           cp ../susfs4ksu/kernel_patches/fs/* ./common/fs/
           cp ../susfs4ksu/kernel_patches/include/linux/* ./common/include/linux/
 
