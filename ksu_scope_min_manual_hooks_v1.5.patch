@@ -44,19 +44,18 @@ diff --git a/fs/exec.c b/fs/exec.c
      return compat_do_execve(getname(filename), argv, envp);
  }
  #endif
-
 diff --git a/fs/open.c b/fs/open.c
 --- a/fs/open.c
 +++ b/fs/open.c
 @@
  SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
  {
+-    return do_faccessat(dfd, filename, mode);
 +#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
 +    ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
 +#endif
-     return do_faccessat(dfd, filename, mode);
++    return do_faccessat(dfd, filename, mode);
  }
-
 diff --git a/fs/stat.c b/fs/stat.c
 --- a/fs/stat.c
 +++ b/fs/stat.c
@@ -64,25 +63,25 @@ diff --git a/fs/stat.c b/fs/stat.c
  SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
          struct stat __user *, statbuf, int, flag)
  {
+-    return vfs_fstatat(dfd, filename, statbuf, flag);
 +#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
 +    ksu_handle_stat(&dfd, &filename, &flag);
 +#endif
-     return vfs_fstatat(dfd, filename, statbuf, flag);
++    return vfs_fstatat(dfd, filename, statbuf, flag);
  }
-
 diff --git a/fs/read_write.c b/fs/read_write.c
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
 @@
  SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
  {
+-    return ksys_read(fd, buf, count);
 +#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
 +    if (unlikely(ksu_vfs_read_hook))
 +        ksu_handle_sys_read(fd, &buf, &count);
 +#endif
-     return ksys_read(fd, buf, count);
++    return ksys_read(fd, buf, count);
  }
-
 diff --git a/drivers/input/input.c b/drivers/input/input.c
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
@@ -96,18 +95,18 @@ diff --git a/drivers/input/input.c b/drivers/input/input.c
 +        ksu_handle_input_handle_event(&type, &code, &value);
 +#endif
  }
-
 diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
 --- a/security/selinux/hooks.c
 +++ b/security/selinux/hooks.c
 @@
  static int selinux_bprm_set_creds(struct linux_binprm *bprm)
  {
+-    return secondary_ops->bprm_set_creds(bprm);
 +#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
 +    extern bool is_ksu_transition(const struct task_security_struct *old_tsec,
 +                                   const struct task_security_struct *new_tsec);
 +    if (is_ksu_transition(old_tsec, new_tsec))
 +        return 0;
 +#endif
-     return secondary_ops->bprm_set_creds(bprm);
++    return secondary_ops->bprm_set_creds(bprm);
  }
