@@ -1,111 +1,155 @@
 --- a/fs/exec.c
 +++ b/fs/exec.c
-@@
- 
-+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
-+__attribute__((hot))
-+extern int ksu_handle_execveat(
-+    int *fd,
-+    const char __user **filename_user,
-+    const char __user *const __user **argv,
-+    const char __user *const __user **envp,
-+    int *flags);
-+
-+__attribute__((hot))
-+extern int ksu_handle_execve_sucompat(
-+    int *fd,
-+    const char __user **filename_user,
-+    void *argv,
-+    void *envp,
-+    int *flags);
-+#endif
-+
- SYSCALL_DEFINE3(execve,
-        const char __user *, filename,
-        const char __user *const __user *, argv,
-        const char __user *const __user *, envp)
- {
-+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
-+    ksu_handle_execve_sucompat((int *)AT_FDCWD, &filename, NULL, NULL, NULL);
-+#endif
-     return do_execve(getname(filename), argv, envp);
+@@ -1886,12 +1886,26 @@ static int do_execveat_common(int fd, struct filename *filename,
+ 	return retval;
  }
  
- #ifdef CONFIG_COMPAT
- COMPAT_SYSCALL_DEFINE3(execve,
-        const char __user *, filename,
-        const compat_uptr_t __user *, argv,
-        const compat_uptr_t __user *, envp)
- {
-+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
-+    ksu_handle_execve_sucompat((int *)AT_FDCWD, &filename, NULL, NULL, NULL);
++#ifdef CONFIG_KSU
++__attribute__((hot))
++extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr,
++				void *argv, void *envp, int *flags);
 +#endif
-     return compat_do_execve(getname(filename), argv, envp);
++
+ int do_execve(struct filename *filename,
+ 	const char __user *const __user *__argv,
+ 	const char __user *const __user *__envp)
+ {
+ 	struct user_arg_ptr argv = { .ptr.native = __argv };
+ 	struct user_arg_ptr envp = { .ptr.native = __envp };
++#ifdef CONFIG_KSU
++	ksu_handle_execveat((int *)AT_FDCWD, &filename, &argv, &envp, 0);
++#endif
+ 	return do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
  }
- #endif
+ 
+@@ -1919,6 +1933,10 @@ static int compat_do_execve(struct filename *filename,
+ 		.is_compat = true,
+ 		.ptr.compat = __envp,
+ 	};
++#ifdef CONFIG_KSU // 32-bit ksud and 32-on-64 support
++	ksu_handle_execveat((int *)AT_FDCWD, &filename, &argv, &envp, 0);
++#endif
+ 	return do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
+ }
 
 --- a/fs/open.c
 +++ b/fs/open.c
-@@
+@@ -450,8 +450,16 @@ long do_faccessat(int dfd, const char __user *filename, int mode)
+ 	return res;
+ }
+ 
++#ifdef CONFIG_KSU
++__attribute__((hot)) 
++extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user,
++				int *mode, int *flags);
++#endif
++
  SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
  {
--    return do_faccessat(dfd, filename, mode);
-+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
-+    ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
++#ifdef CONFIG_KSU
++	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
 +#endif
-+    return do_faccessat(dfd, filename, mode);
+ 	return do_faccessat(dfd, filename, mode);
+ }
+
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -450,8 +450,16 @@ long do_faccessat(int dfd, const char __user *filename, int mode)
+ 	return res;
+ }
+ 
++#ifdef CONFIG_KSU
++__attribute__((hot)) 
++extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user,
++				int *mode, int *flags);
++#endif
++
+ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ {
++#ifdef CONFIG_KSU
++	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
++#endif
+ 	return do_faccessat(dfd, filename, mode);
  }
 
 --- a/fs/stat.c
 +++ b/fs/stat.c
-@@
- SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
-         struct stat __user *, statbuf, int, flag)
- {
--    return vfs_fstatat(dfd, filename, statbuf, flag);
-+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
-+    ksu_handle_stat(&dfd, &filename, &flag);
-+#endif
-+    return vfs_fstatat(dfd, filename, statbuf, flag);
+@@ -353,6 +353,10 @@ SYSCALL_DEFINE2(newlstat, const char __user *, filename,
+ 	return cp_new_stat(&stat, statbuf);
  }
+ 
++#ifdef CONFIG_KSU
++__attribute__((hot)) 
++extern int ksu_handle_stat(int *dfd, const char __user **filename_user,
++				int *flags);
++#endif
 
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@
+@@ -586,8 +586,18 @@ ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count)
+ 	return ret;
+ }
+ 
++#ifdef CONFIG_KSU
++extern bool ksu_vfs_read_hook __read_mostly;
++extern int ksu_handle_sys_read(unsigned int fd, char __user **buf_ptr,
++			size_t *count_ptr);
++#endif
++
  SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
  {
--    return ksys_read(fd, buf, count);
-+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
-+    if (unlikely(ksu_vfs_read_hook))
-+        ksu_handle_sys_read(fd, &buf, &count);
++#ifdef CONFIG_KSU
++	if (unlikely(ksu_vfs_read_hook)) 
++		ksu_handle_sys_read(fd, &buf, &count);
 +#endif
-+    return ksys_read(fd, buf, count);
+ 	return ksys_read(fd, buf, count);
  }
 
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
-@@
- void input_event(struct input_dev *dev, unsigned int type, unsigned int code, int value)
- {
-+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
-+    extern bool ksu_input_hook __read_mostly;
-+    extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
-+    if (unlikely(ksu_input_hook))
-+        ksu_handle_input_handle_event(&type, &code, &value);
+@@ -436,11 +436,21 @@ static void input_handle_event(struct input_dev *dev,
+  * to 'seed' initial state of a switch or initial position of absolute
+  * axis, etc.
+  */
++#ifdef CONFIG_KSU
++extern bool ksu_input_hook __read_mostly;
++extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
 +#endif
++
+ void input_event(struct input_dev *dev,
+ 		 unsigned int type, unsigned int code, int value)
+ {
+ 	unsigned long flags;
+ 
++#ifdef CONFIG_KSU
++	if (unlikely(ksu_input_hook))
++		ksu_handle_input_handle_event(&type, &code, &value);
++#endif
++
+ 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
+ 
+ 		spin_lock_irqsave(&dev->event_lock, flags);
  }
 
 --- a/security/selinux/hooks.c
 +++ b/security/selinux/hooks.c
-@@
- static int selinux_bprm_set_creds(struct linux_binprm *bprm)
- {
--    return secondary_ops->bprm_set_creds(bprm);
-+#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
-+    extern bool is_ksu_transition(const struct task_security_struct *old_tsec,
-+                                   const struct task_security_struct *new_tsec);
-+    if (is_ksu_transition(old_tsec, new_tsec))
-+        return 0;
-+#endif
-+    return secondary_ops->bprm_set_creds(bprm);
+@@ -2314,6 +2314,12 @@ static u32 ptrace_parent_sid(struct task_struct *task')
+ 	return sid;
  }
+ 
++#ifdef CONFIG_KSU
++extern bool is_ksu_transition(const struct task_security_struct *old_tsec, 
++				const struct task_security_struct *new_tsec);
++#endif
++
+ static int check_nnp_nosuid(const struct linux_binprm *bprm,
+ 			    const struct task_security_struct *old_tsec,
+ 			    const struct task_security_struct *new_tsec)
+@@ -2327,6 +2333,10 @@ static int check_nnp_nosuid(const struct linux_binprm *bprm',
+ 
+ 	if (new_tsec->sid == old_tsec->sid)
+ 		return 0; /* No change in credentials */
++#ifdef CONFIG_KSU
++	if (is_ksu_transition(old_tsec, new_tsec))
++		return 0;
++#endif
