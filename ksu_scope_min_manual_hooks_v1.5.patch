@@ -1,182 +1,114 @@
 diff --git a/fs/exec.c b/fs/exec.c
-index 000000000000..000000000000 100644
 --- a/fs/exec.c
 +++ b/fs/exec.c
-@@ -1,5 +1,15 @@
+@@
  /* SPDX-License-Identifier: GPL-2.0 */
  
-+#ifdef CONFIG_KSU
++#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
++__attribute__((hot))
++extern int ksu_handle_execveat(
++    int *fd,
++    const char __user **filename_user,
++    const char __user *const __user **argv,
++    const char __user *const __user **envp,
++    int *flags);
++
 +__attribute__((hot))
 +extern int ksu_handle_execve_sucompat(
-+	int *fd,
-+	const char __user **filename_user,
-+	void *__never_use_argv,
-+	void *__never_use_envp,
-+	int *__never_use_flags);
++    int *fd,
++    const char __user **filename_user,
++    void *argv,
++    void *envp,
++    int *flags);
 +#endif
 +
  SYSCALL_DEFINE3(execve,
- 		const char __user *, filename,
- 		const char __user *const __user *, argv,
-@@ -8,6 +18,9 @@ SYSCALL_DEFINE3(execve,
- 	struct filename *path;
- 	int ret;
- 
-+#ifdef CONFIG_KSU
-+	ksu_handle_execve_sucompat((int *)AT_FDCWD, &filename, NULL, NULL, NULL);
+        const char __user *, filename,
+        const char __user *const __user *, argv,
+        const char __user *const __user *, envp)
+ {
++#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
++    ksu_handle_execve_sucompat((int *)AT_FDCWD, &filename, NULL, NULL, NULL);
 +#endif
- 	path = getname(filename);
- 	ret = PTR_ERR(path);
- 	if (!IS_ERR(path)) {
-@@ -22,9 +35,11 @@ SYSCALL_DEFINE3(execve,
+     return do_execve(getname(filename), argv, envp);
  }
  
  #ifdef CONFIG_COMPAT
- COMPAT_SYSCALL_DEFINE3(execve, const char __user *, filename,
- 		       const compat_uptr_t __user *, argv,
- 		       const compat_uptr_t __user *, envp)
+ COMPAT_SYSCALL_DEFINE3(execve,
+        const char __user *, filename,
+        const compat_uptr_t __user *, argv,
+        const compat_uptr_t __user *, envp)
  {
- 	struct filename *path;
-+#ifdef CONFIG_KSU
-+	ksu_handle_execve_sucompat((int *)AT_FDCWD, &filename, NULL, NULL, NULL);
++#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
++    ksu_handle_execve_sucompat((int *)AT_FDCWD, &filename, NULL, NULL, NULL);
 +#endif
- 	path = getname(filename);
- 	return compat_do_execve(path, argv, envp);
+     return compat_do_execve(getname(filename), argv, envp);
  }
-@@ -34,6 +49,7 @@ COMPAT_SYSCALL_DEFINE3(execve, const char __user *, filename,
  #endif
- 
+
 diff --git a/fs/open.c b/fs/open.c
-index 000000000000..000000000000 100644
 --- a/fs/open.c
 +++ b/fs/open.c
-@@ -1,5 +1,14 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- 
-+#ifdef CONFIG_KSU
-+__attribute__((hot))
-+extern int ksu_handle_faccessat(
-+	int *dfd,
-+	const char __user **filename_user,
-+	int *mode,
-+	int *flags);
-+#endif
-+
- long do_faccessat(int dfd, const char __user *filename, int mode);
- 
+@@
  SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
-@@ -8,6 +17,9 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
- 	int res;
- 	unsigned int lookup_flags = LOOKUP_FOLLOW;
- 
-+#ifdef CONFIG_KSU
-+	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
+ {
++#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
++    ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
 +#endif
- 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
- 		return -EINVAL;
- 
+     return do_faccessat(dfd, filename, mode);
+ }
+
 diff --git a/fs/stat.c b/fs/stat.c
-index 000000000000..000000000000 100644
 --- a/fs/stat.c
 +++ b/fs/stat.c
-@@ -1,5 +1,13 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- 
-+#ifdef CONFIG_KSU
-+__attribute__((hot))
-+extern int ksu_handle_stat(
-+	int *dfd,
-+	const char __user **filename_user,
-+	int *flags);
-+#endif
-+
- #if !defined(__ARCH_WANT_STAT64) || defined(__ARCH_WANT_SYS_NEWFSTATAT)
+@@
  SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
- 		struct stat __user *, statbuf, int, flag)
-@@ -10,6 +18,9 @@ SYSCALL_DEFINE4(newfstatat, int, dfd, const char __user *, filename,
- 	struct kstat stat;
- 	int error;
- 
-+#ifdef CONFIG_KSU
-+	ksu_handle_stat(&dfd, &filename, &flag);
-+#endif
- 	error = vfs_fstatat(dfd, filename, &stat, flag);
- 	if (error)
- 		return error;
-@@ -57,10 +68,16 @@ SYSCALL_DEFINE2(oldlstat, const char __user *, filename,
- }
- #endif
- 
-+#ifdef CONFIG_ARCH_32BIT_OFF_T
- SYSCALL_DEFINE4(fstatat64, int, dfd, const char __user *, filename,
- 		struct stat64 __user *, statbuf, int, flag)
+         struct stat __user *, statbuf, int, flag)
  {
- 	struct kstat stat;
- 	int error;
-+#ifdef CONFIG_KSU
-+	ksu_handle_stat(&dfd, &filename, &flag);
++#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
++    ksu_handle_stat(&dfd, &filename, &flag);
 +#endif
- 	error = vfs_fstatat(dfd, filename, &stat, flag);
- 	if (error)
- 		return error;
- 	return cp_new_stat64(&stat, statbuf);
+     return vfs_fstatat(dfd, filename, statbuf, flag);
  }
-+#endif
+
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 000000000000..000000000000 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1,5 +1,15 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- 
-+#ifdef CONFIG_KSU
-+extern bool ksu_vfs_read_hook __read_mostly;
-+__attribute__((hot))
-+extern int ksu_handle_sys_read(
-+	unsigned int fd,
-+	char __user **buf_ptr,
-+	size_t *count_ptr
-+);
-+#endif
-+
- ssize_t ksys_read(unsigned int fd, char __user *buf, size_t count);
- 
+@@
  SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
-@@ -8,6 +18,9 @@ SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
  {
- #ifdef CONFIG_MAGIC_SYSRQ
- 	if (unlikely(system_state == SYSTEM_BOOTING))
- 		if (unlikely(ksys_read_helper(fd, buf, count)))
- 			return count;
- #endif
-+#ifdef CONFIG_KSU
-+	if (unlikely(ksu_vfs_read_hook)) ksu_handle_sys_read(fd, &buf, &count);
++#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
++    if (unlikely(ksu_vfs_read_hook))
++        ksu_handle_sys_read(fd, &buf, &count);
 +#endif
- 	return ksys_read(fd, buf, count);
+     return ksys_read(fd, buf, count);
  }
+
 diff --git a/drivers/input/input.c b/drivers/input/input.c
-index 000000000000..000000000000 100644
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
-@@ -1,5 +1,13 @@
- /* SPDX-License-Identifier: GPL-2.0 */
- 
-+#ifdef CONFIG_KSU
-+extern bool ksu_input_hook __read_mostly;
-+__attribute__((hot))
-+extern int ksu_handle_input_handle_event(
-+	unsigned int *type, unsigned int *code, int *value
-+);
-+#endif
-+
- void input_event(struct input_dev *dev,
- 		 unsigned int type, unsigned int code, int value)
+@@
+ void input_event(struct input_dev *dev, unsigned int type, unsigned int code, int value)
  {
-@@ -9,6 +17,9 @@ void input_event(struct input_dev *dev,
- 
-+#ifdef CONFIG_KSU
-+	if (unlikely(ksu_input_hook)) ksu_handle_input_handle_event(&type, &code, &value);
++#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
++    extern bool ksu_input_hook __read_mostly;
++    extern int ksu_handle_input_handle_event(unsigned int *type, unsigned int *code, int *value);
++    if (unlikely(ksu_input_hook))
++        ksu_handle_input_handle_event(&type, &code, &value);
 +#endif
- 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
- 		struct input_value vals[] = { { type, code, value } };
- 		if (value != 2 || is_event_supported(EV_SYN, dev->evbit, EV_MAX))
+ }
+
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@
+ static int selinux_bprm_set_creds(struct linux_binprm *bprm)
+ {
++#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
++    extern bool is_ksu_transition(const struct task_security_struct *old_tsec,
++                                   const struct task_security_struct *new_tsec);
++    if (is_ksu_transition(old_tsec, new_tsec))
++        return 0;
++#endif
+     return secondary_ops->bprm_set_creds(bprm);
+ }
