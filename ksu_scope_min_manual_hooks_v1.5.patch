@@ -1,4 +1,3 @@
-diff --git a/fs/exec.c b/fs/exec.c
 --- a/fs/exec.c
 +++ b/fs/exec.c
 @@
@@ -44,7 +43,7 @@ diff --git a/fs/exec.c b/fs/exec.c
      return compat_do_execve(getname(filename), argv, envp);
  }
  #endif
-diff --git a/fs/open.c b/fs/open.c
+
 --- a/fs/open.c
 +++ b/fs/open.c
 @@
@@ -56,7 +55,7 @@ diff --git a/fs/open.c b/fs/open.c
 +#endif
 +    return do_faccessat(dfd, filename, mode);
  }
-diff --git a/fs/stat.c b/fs/stat.c
+
 --- a/fs/stat.c
 +++ b/fs/stat.c
 @@
@@ -69,7 +68,7 @@ diff --git a/fs/stat.c b/fs/stat.c
 +#endif
 +    return vfs_fstatat(dfd, filename, statbuf, flag);
  }
-diff --git a/fs/read_write.c b/fs/read_write.c
+
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
 @@
@@ -82,7 +81,7 @@ diff --git a/fs/read_write.c b/fs/read_write.c
 +#endif
 +    return ksys_read(fd, buf, count);
  }
-diff --git a/drivers/input/input.c b/drivers/input/input.c
+
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
 @@
@@ -95,7 +94,7 @@ diff --git a/drivers/input/input.c b/drivers/input/input.c
 +        ksu_handle_input_handle_event(&type, &code, &value);
 +#endif
  }
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+
 --- a/security/selinux/hooks.c
 +++ b/security/selinux/hooks.c
 @@
