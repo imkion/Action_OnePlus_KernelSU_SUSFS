@@ -2,7 +2,6 @@ diff --git a/fs/exec.c b/fs/exec.c
 --- a/fs/exec.c
 +++ b/fs/exec.c
 @@
- /* SPDX-License-Identifier: GPL-2.0 */
  
 +#if defined(CONFIG_KSU) && !defined(CONFIG_KSU_KPROBES_HOOK)
 +__attribute__((hot))
