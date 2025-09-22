@@ -241,6 +241,7 @@ jobs:
 
       - name: 配置内核信息
         run: |
+          cd kernel_workspace
           arch=$(uname -m)
           case "$arch" in
             x86_64)
