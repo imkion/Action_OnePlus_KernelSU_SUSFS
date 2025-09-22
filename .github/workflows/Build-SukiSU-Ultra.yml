@@ -244,11 +244,18 @@ jobs:
           echo "[SukiSU] 开始注入（susfs-main）"
           curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" | bash -s susfs-main
           
-          cd KernelSU
-          sed -i 's/@unknown/-FurLC/' kernel/Makefile
+          # cd KernelSU
+          # sed -i 's/@unknown/-FurLC/' kernel/Makefile
+
+      - name: 上传 KernelSU Makefile
+        uses: actions/upload-artifact@v4
+        with:
+          name: KernelSU_Makefile_${{ env.CLEAN_FEIL }}_${{ env.BUILD_DATE }}
+          path: kernel_workspace/kernel_platform/KernelSU/kernel/Makefile
           
       - name: 设置susfs并应用主补丁
         run: |
+          error
           cd kernel_workspace
           # 下载补丁文件 #
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
