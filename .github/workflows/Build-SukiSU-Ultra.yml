@@ -162,7 +162,11 @@ jobs:
 
       - name: 显示工作目录
         run: |
-          ls -al 
+          pwd
+          ls -al
+          ls -al $GITHUB_WORKSPACE
+          ls -al $GITHUB_WORKSPACE/.github
+          ls -al $GITHUB_WORKSPACE/.github/workflows
       
       - name: 显示 hashFiles 结果
         run: |
