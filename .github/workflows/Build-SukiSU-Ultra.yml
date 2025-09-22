@@ -149,8 +149,9 @@ jobs:
       - name: 配置APT缓存
         run: |
           # 设置APT缓存目录 #
-          APT_CACHE_DIR="$HOME/apt-cache"
-          mkdir -p "$APT_CACHE_DIR"/{archives,lists/partial}
+          echo "APT_CACHE_DIR=$HOME/apt-cache" >> $GITHUB_ENV
+          mkdir -p "$HOME/apt-cache/archives" "$HOME/apt-cache/lists/partial"
+          echo "APT缓存目录: $HOME/apt-cache"
           # 创建APT配置文件
           echo "Dir::Cache \"$APT_CACHE_DIR\";" | sudo tee /etc/apt/apt.conf.d/90user-cache
           echo "Dir::Cache::archives \"$APT_CACHE_DIR/archives\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
@@ -162,7 +163,7 @@ jobs:
       - name: 恢复APT缓存
         uses: actions/cache@v3
         with:
-          path: ${{ env.HOME }}/apt-cache
+          path: ${{ env.APT_CACHE_DIR }}
           key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/Build-SukiSU-Ultra.yml') }}
           restore-keys: |
             ${{ runner.os }}-apt-
