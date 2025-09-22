@@ -222,6 +222,9 @@ jobs:
           repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
           # 使用最大线程同步代码库 #
           repo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync
+
+          rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
+          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
           
       - name: 注入KernelSU-SukiSU Ultra
         run: |
@@ -233,7 +236,20 @@ jobs:
 
       - name: 配置内核信息
         run: |
-          curl -L "https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/modify_kernel_exec" -o modify_kernel_exec
+          arch=$(uname -m)
+          case "$arch" in
+            x86_64)
+              url="https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/modify_kernel/modify_kernel_exec_x86_64"
+              ;;
+            aarch64)
+              url="https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/modify_kernel/modify_kernel_exec_aarch64"
+              ;;
+            *)
+              echo "不支持的架构: $arch"
+              exit 1
+              ;;
+          esac
+          curl -L "$url" -o modify_kernel_exec
           chmod +x modify_kernel_exec
           ./modify_kernel_exec
           
