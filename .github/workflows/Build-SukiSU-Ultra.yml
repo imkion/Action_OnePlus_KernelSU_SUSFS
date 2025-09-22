@@ -161,7 +161,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.HOME }}/apt-cache
-          key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/Build SukiSU Ultra.yml') }}
+          key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/Build-SukiSU-Ultra.yml') }}
           restore-keys: |
             ${{ runner.os }}-apt-
       
