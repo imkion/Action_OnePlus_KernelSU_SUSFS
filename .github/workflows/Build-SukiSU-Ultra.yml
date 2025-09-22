@@ -118,6 +118,8 @@ jobs:
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
       CCACHE_MAXSIZE: 8G
+      CCACHE_DIR: $HOME/.ccache_${{ github.event.inputs.FEIL }}
+      APT_CACHE_DIR: $HOME/apt-cache
     
     steps:
       - name: "最大化构建空间"
@@ -136,9 +138,8 @@ jobs:
       - name: 设置缓存环境
         run: |
           # 设置机型隔离缓存目录 #
-          echo "CCACHE_DIR=$HOME/.ccache_${{ github.event.inputs.FEIL }}" >> $GITHUB_ENV
-          mkdir -p "$HOME/.ccache_${{ github.event.inputs.FEIL }}"
-          echo "缓存目录: $HOME/.ccache_${{ github.event.inputs.FEIL }}"
+          mkdir -p "$CCACHE_DIR"
+          echo "缓存目录: $CCACHE_DIR"
       
       - name: 配置Git账户
         run: |
@@ -149,7 +150,6 @@ jobs:
       - name: 配置APT缓存
         run: |
           # 设置APT缓存目录 #
-          APT_CACHE_DIR="${APT_CACHE_DIR:-$HOME/apt-cache}"
           mkdir -p "$APT_CACHE_DIR/archives" "$APT_CACHE_DIR/lists/partial"
           echo "APT缓存目录: $APT_CACHE_DIR"
           # 创建APT配置文件
@@ -171,7 +171,6 @@ jobs:
       - name: 安装构建依赖
         run: |
           # 安装编译依赖项 #
-          APT_CACHE_DIR="${APT_CACHE_DIR:-$HOME/apt-cache}"
           mkdir -p "$APT_CACHE_DIR/lists/partial"
           # 更新包列表并安装必要工具 #
           sudo apt-get -o Dir::Cache="$APT_CACHE_DIR" update -qq
@@ -194,12 +193,12 @@ jobs:
       - name: 初始化ccache
         run: |
           # 初始化ccache #
-          INIT_FLAG="${{ env.CCACHE_DIR }}/.ccache_initialized"
+          INIT_FLAG="${CCACHE_DIR}/.ccache_initialized"
           
           if command -v ccache >/dev/null 2>&1; then
             if [ ! -f "$INIT_FLAG" ]; then
-              mkdir -p "${{ env.CCACHE_DIR }}"
-              ccache -M ${{ env.CCACHE_MAXSIZE }}
+              mkdir -p "$CCACHE_DIR"
+              ccache -M $CCACHE_MAXSIZE
               touch "$INIT_FLAG"
               echo "ccache初始化完成"
             else
