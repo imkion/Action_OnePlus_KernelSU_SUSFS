@@ -120,6 +120,16 @@ jobs:
       CCACHE_MAXSIZE: 8G
     
     steps:
+      - name: "最大化构建空间"
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 8192
+          temp-reserve-mb: 4096
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          
       - name: 拉取仓库
         uses: actions/checkout@v4
       
@@ -148,10 +158,6 @@ jobs:
           echo "Acquire::Check-Valid-Until \"false\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           echo "Acquire::Languages \"none\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           sudo chown -R $USER:$USER "$APT_CACHE_DIR"
-      
-      - name: 显示 hashFiles 结果
-        run: |
-          echo "哈希值: ${{ hashFiles('.github/workflows/Build-SukiSU-Ultra.yml') }}"
       
       - name: 恢复APT缓存
         uses: actions/cache@v3
