@@ -222,19 +222,6 @@ jobs:
           repo init -u https://github.com/OnePlusOSS/kernel_manifest.git -b refs/heads/oneplus/${{ github.event.inputs.CPU }} -m ${{ github.event.inputs.FEIL }}.xml --depth=1
           # 使用最大线程同步代码库 #
           repo sync -c -j$(nproc --all) --no-tags --no-clone-bundle --force-sync
-
-          echo "Kernel version:-${{ github.event.inputs.ANDROID_VERSION }}-FurLC"
-          rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
-          rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
-          sed -i 's/ -dirty//g' kernel_platform/common/scripts/setlocalversion
-          sed -i 's/ -dirty//g' kernel_platform/msm-kernel/scripts/setlocalversion
-          sed -i 's/ -dirty//g' kernel_platform/external/dtc/scripts/setlocalversion
-          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/common/scripts/setlocalversion
-          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/msm-kernel/scripts/setlocalversion
-          sed -i '$i res=$(echo "$res" | sed '\''s/-dirty//g'\'')' kernel_platform/external/dtc/scripts/setlocalversion
-          sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-FurLC"|' kernel_platform/common/scripts/setlocalversion            
-          sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-FurLC"|' kernel_platform/msm-kernel/scripts/setlocalversion
-          sed -i '$s|echo "\$res"|echo "-${{ github.event.inputs.ANDROID_VERSION }}-FurLC"|' kernel_platform/external/dtc/scripts/setlocalversion
           
       - name: 注入KernelSU-SukiSU Ultra
         run: |
@@ -243,9 +230,12 @@ jobs:
           # 下载并执行设置脚本 #
           echo "[SukiSU] 开始注入（susfs-main）"
           curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" | bash -s susfs-main
-          
-          cd KernelSU
-          sed -i 's/@$(shell cd $(srctree)\/$(src); $(GIT_BIN) rev-parse --abbrev-ref HEAD)/-FurLC/' kernel/Makefile
+
+      - name: 配置内核信息
+        run: |
+          curl -L "https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/modify_kernel_exec" -o modify_kernel_exec
+          chmod +x modify_kernel_exec
+          ./modify_kernel_exec
           
       - name: 设置susfs并应用主补丁
         run: |
