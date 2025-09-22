@@ -255,7 +255,6 @@ jobs:
           
       - name: 设置susfs并应用主补丁
         run: |
-          error
           cd kernel_workspace
           # 下载补丁文件 #
           git clone --depth=1 https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ github.event.inputs.ANDROID_VERSION }}-${{ github.event.inputs.KERNEL_VERSION }}
