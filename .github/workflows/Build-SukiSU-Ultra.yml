@@ -171,7 +171,7 @@ jobs:
       - name: 安装构建依赖
         run: |
           # 安装编译依赖项 #
-          APT_CACHE_DIR="$HOME/apt-cache"
+          APT_CACHE_DIR="${APT_CACHE_DIR:-$HOME/apt-cache}"
           mkdir -p "$APT_CACHE_DIR/lists/partial"
           # 更新包列表并安装必要工具 #
           sudo apt-get -o Dir::Cache="$APT_CACHE_DIR" update -qq
