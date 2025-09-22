@@ -120,6 +120,9 @@ jobs:
       CCACHE_MAXSIZE: 8G
     
     steps:
+      - name: 拉取仓库
+        uses: actions/checkout@v4
+      
       - name: 最大化构建空间
         if: ${{ github.event.inputs.KERNEL_VERSION != '6.1' }}
         uses: easimon/maximize-build-space@master
