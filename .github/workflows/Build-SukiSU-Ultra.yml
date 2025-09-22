@@ -150,8 +150,7 @@ jobs:
       - name: 配置APT缓存
         run: |
           # 设置APT缓存目录 #
-          mkdir -p "$APT_CACHE_DIR/archives/partial"
-          mkdir -p "$APT_CACHE_DIR/lists/partial"
+          mkdir -p "$APT_CACHE_DIR"/{archives,lists/partial}
           # 创建APT配置文件
           echo "Dir::Cache \"$APT_CACHE_DIR\";" | sudo tee /etc/apt/apt.conf.d/90user-cache
           echo "Dir::Cache::archives \"$APT_CACHE_DIR/archives\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
@@ -159,6 +158,7 @@ jobs:
           echo "Acquire::Check-Valid-Until \"false\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           echo "Acquire::Languages \"none\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           sudo chown -R $USER:$USER "$APT_CACHE_DIR"
+          echo "APT缓存配置完成"
       
       - name: 恢复APT缓存
         uses: actions/cache@v3
@@ -171,16 +171,16 @@ jobs:
       - name: 安装构建依赖
         run: |
           # 安装编译依赖项 #
-          mkdir -p "$APT_CACHE_DIR/archives/partial"
           mkdir -p "$APT_CACHE_DIR/lists/partial"
           # 更新包列表并安装必要工具 #
-          sudo apt-get -o Dir::Cache="$APT_CACHE_DIR" update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get -o Dir::Cache="$APT_CACHE_DIR" install -yq --no-install-recommends \
+          sudo apt -o Dir::Cache="$APT_CACHE_DIR" update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt -o Dir::Cache="$APT_CACHE_DIR" install -yq --no-install-recommends \
             python3 git curl ccache libelf-dev \
             build-essential flex bison libssl-dev \
             libncurses-dev liblz4-tool zlib1g-dev \
             libxml2-utils rsync unzip bc \
             binutils-aarch64-linux-gnu
+          echo "所有依赖项已成功安装"
       
       - name: 恢复ccache缓存
         uses: actions/cache@v3
