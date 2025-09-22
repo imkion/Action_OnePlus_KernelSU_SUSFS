@@ -244,8 +244,8 @@ jobs:
           echo "[SukiSU] 开始注入（susfs-main）"
           curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" | bash -s susfs-main
           
-          # cd KernelSU
-          # sed -i 's/@unknown/-FurLC/' kernel/Makefile
+          cd KernelSU
+          sed -i 's/@$(shell cd $(srctree)\/$(src); $(GIT_BIN) rev-parse --abbrev-ref HEAD)/-FurLC/' kernel/Makefile
 
       - name: 上传 KernelSU Makefile
         uses: actions/upload-artifact@v4
