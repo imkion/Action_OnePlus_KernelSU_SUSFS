@@ -156,6 +156,10 @@ jobs:
           echo "Acquire::Check-Valid-Until \"false\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           echo "Acquire::Languages \"none\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           sudo chown -R $USER:$USER "$APT_CACHE_DIR"
+
+      - name: 显示 hashFiles 结果
+        run: |
+          echo "哈希值: ${{ hashFiles('.github/workflows/Build-SukiSU-Ultra.yml') }}"
       
       - name: 恢复APT缓存
         uses: actions/cache@v3
