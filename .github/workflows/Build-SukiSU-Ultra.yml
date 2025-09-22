@@ -242,16 +242,17 @@ jobs:
               url="https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/modify_kernel/modify_kernel_exec_x86_64"
               ;;
             aarch64)
-              url="https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/modify_kernel/modify_kernel_exec_aarch64"
+              url="https://raw.githubusercontent.com/FurLC/Action_OnePlus_KernelSU_SUSFS/main/modify_kernel/modify_kernel_exec_arm64"
               ;;
             *)
               echo "不支持的架构: $arch"
               exit 1
               ;;
           esac
+          echo "正在下载补丁文件: $url"
           curl -L "$url" -o modify_kernel_exec
           chmod +x modify_kernel_exec
-          ./modify_kernel_exec
+          ./modify_kernel_exec ${{ github.event.inputs.ANDROID_VERSION }}
           
       - name: 设置susfs并应用主补丁
         run: |
