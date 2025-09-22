@@ -123,17 +123,6 @@ jobs:
       - name: 拉取仓库
         uses: actions/checkout@v4
       
-      - name: 最大化构建空间
-        if: ${{ github.event.inputs.KERNEL_VERSION != '6.1' }}
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 8192
-          temp-reserve-mb: 4096
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-      
       - name: 设置缓存环境
         run: |
           # 设置机型隔离缓存目录 #
@@ -159,14 +148,6 @@ jobs:
           echo "Acquire::Check-Valid-Until \"false\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           echo "Acquire::Languages \"none\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           sudo chown -R $USER:$USER "$APT_CACHE_DIR"
-
-      - name: 显示工作目录
-        run: |
-          pwd
-          ls -al
-          ls -al $GITHUB_WORKSPACE
-          ls -al $GITHUB_WORKSPACE/.github
-          ls -al $GITHUB_WORKSPACE/.github/workflows
       
       - name: 显示 hashFiles 结果
         run: |
