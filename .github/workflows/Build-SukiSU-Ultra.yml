@@ -245,7 +245,7 @@ jobs:
           curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/susfs-main/kernel/setup.sh" | bash -s susfs-main
           
           cd KernelSU
-          sed -i 's/@[^ ]*/-FurLC/g' kernel/Makefile
+          sed -i 's/@unknown/-FurLC/' kernel/Makefile
           
       - name: 设置susfs并应用主补丁
         run: |
