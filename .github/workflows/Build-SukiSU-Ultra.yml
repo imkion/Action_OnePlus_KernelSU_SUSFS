@@ -157,16 +157,10 @@ jobs:
           echo "Acquire::Languages \"none\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
           sudo chown -R $USER:$USER "$APT_CACHE_DIR"
       
-      - name: 保证APT缓存目录存在
-        run: mkdir -p $HOME/apt-cache/archives $HOME/apt-cache/lists/partial
-
-      - name: 保证CCACHE缓存目录存在
-        run: mkdir -p $HOME/.ccache_${{ github.event.inputs.FEIL }}
-      
       - name: 恢复APT缓存
         uses: actions/cache@v3
         with:
-          path: $HOME/apt-cache
+          path: ${{ env.HOME }}/apt-cache
           key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/Build-SukiSU-Ultra.yml') }}
           restore-keys: |
             ${{ runner.os }}-apt-
@@ -188,7 +182,7 @@ jobs:
       - name: 恢复ccache缓存
         uses: actions/cache@v3
         with:
-          path: $HOME/.ccache_${{ github.event.inputs.FEIL }}
+          path: ${{ env.CCACHE_DIR }}
           key: ccache-${{ runner.os }}-${{ github.ref }}-${{ github.event.inputs.FEIL }}
           restore-keys: |
             ccache-${{ runner.os }}-${{ github.event.inputs.FEIL }}-
@@ -197,20 +191,23 @@ jobs:
       - name: 初始化ccache
         run: |
           # 初始化ccache #
-          INIT_FLAG="$HOME/.ccache_${{ github.event.inputs.FEIL }}/.ccache_initialized"
+          INIT_FLAG="${{ env.CCACHE_DIR }}/.ccache_initialized"
+          
           if command -v ccache >/dev/null 2>&1; then
             if [ ! -f "$INIT_FLAG" ]; then
-              mkdir -p "$HOME/.ccache_${{ github.event.inputs.FEIL }}"
+              mkdir -p "${{ env.CCACHE_DIR }}"
               ccache -M ${{ env.CCACHE_MAXSIZE }}
               touch "$INIT_FLAG"
               echo "ccache初始化完成"
             else
               echo "ccache已存在，跳过初始化"
             fi
-            ccache -s
           else
             echo "未找到ccache命令，跳过初始化"
           fi
+          # 显示缓存统计
+          ccache -s
+          echo "ccache初始化完成"
       
       - name: 初始化repo
         run: |
