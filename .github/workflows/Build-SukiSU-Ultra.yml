@@ -164,7 +164,7 @@ jobs:
       - name: 恢复APT缓存
         uses: actions/cache@v3
         with:
-          path: ${{ env.APT_CACHE_DIR }}
+          path: $HOME/apt-cache
           key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/Build-SukiSU-Ultra.yml') }}
           restore-keys: |
             ${{ runner.os }}-apt-
