@@ -119,8 +119,6 @@ jobs:
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
       CCACHE_MAXSIZE: 8G
-      CCACHE_DIR: $HOME/.ccache_${{ github.event.inputs.FEIL }}
-      APT_CACHE_DIR: $HOME/apt-cache
     
     steps:
       - name: "最大化构建空间"
@@ -139,8 +137,9 @@ jobs:
       - name: 设置缓存环境
         run: |
           # 设置机型隔离缓存目录 #
-          mkdir -p "$CCACHE_DIR"
-          echo "缓存目录: $CCACHE_DIR"
+          echo "CCACHE_DIR=$HOME/.ccache_${{ github.event.inputs.FEIL }}" >> $GITHUB_ENV
+          mkdir -p "$HOME/.ccache_${{ github.event.inputs.FEIL }}"
+          echo "缓存目录: $HOME/.ccache_${{ github.event.inputs.FEIL }}"
       
       - name: 配置Git账户
         run: |
@@ -151,6 +150,7 @@ jobs:
       - name: 配置APT缓存
         run: |
           # 设置APT缓存目录 #
+          APT_CACHE_DIR="$HOME/apt-cache"
           mkdir -p "$APT_CACHE_DIR"/{archives,lists/partial}
           # 创建APT配置文件
           echo "Dir::Cache \"$APT_CACHE_DIR\";" | sudo tee /etc/apt/apt.conf.d/90user-cache
@@ -164,7 +164,7 @@ jobs:
       - name: 恢复APT缓存
         uses: actions/cache@v3
         with:
-          path: ${{ env.APT_CACHE_DIR }}
+          path: $HOME/apt-cache
           key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/Build-SukiSU-Ultra.yml') }}
           restore-keys: |
             ${{ runner.os }}-apt-
@@ -172,6 +172,7 @@ jobs:
       - name: 安装构建依赖
         run: |
           # 安装编译依赖项 #
+          APT_CACHE_DIR="$HOME/apt-cache"
           mkdir -p "$APT_CACHE_DIR/lists/partial"
           # 更新包列表并安装必要工具 #
           sudo apt -o Dir::Cache="$APT_CACHE_DIR" update -qq
@@ -425,28 +426,20 @@ jobs:
       - name: 设置产物名称
         id: names
         run: |
-          clean_feil="${{ github.event.inputs.FEIL }}"
-          clean_feil="${clean_feil%_v}"
-          clean_feil="${clean_feil%_u}"
-          echo "CLEAN_FEIL=$clean_feil" >> "$GITHUB_ENV"
+          feil_name="${{ github.event.inputs.FEIL }}"
+          [[ "$feil_name" =~ _v$ ]] && feil="${feil_name/_v/_c15}"
+          [[ "$feil_name" =~ _u$ ]] && feil="${feil_name/_u/_c14}"
+          echo "FEIL_NAME=$feil_name" >> "$GITHUB_ENV"
           
-          build_date="$(date +%Y%m%d)"
+          build_date=$(date +%Y%m%d)
           echo "BUILD_DATE=$build_date" >> "$GITHUB_ENV"
-
-          no_kpm="AnyKernel3_SukiSU_Ultra_${clean_feil}_NoKPM_${build_date}"
-
-          if [[ "${{ github.event.inputs.ZRAM }}" == "true" ]]; then
-            no_kpm="${no_kpm}_lz4kd"
-          fi
-          kpm="AnyKernel3_SukiSU_Ultra_${clean_feil}_KPM_${build_date}"
-
-          echo "NO_KPM_NAME=$no_kpm" >> "$GITHUB_ENV"
-          echo "KPM_NAME=$kpm" >> "$GITHUB_ENV"
+          zram_suffix=$([[ "${{ github.event.inputs.ZRAM }}" == "true" ]] && echo "_lz4kd" || echo "")
+          echo "ZRAM_SUFFIX=$zram_suffix" >> "$GITHUB_ENV"
       
       - name: 上传AnyKernel3 (No_KPM)
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.NO_KPM_NAME }}
+          name: AnyKernel3_SukiSU_Ultra_${{ env.FEIL_NAME }}_NoKPM${{ env.ZRAM_SUFFIX }}_${{ env.BUILD_DATE }}
           path: AnyKernel3-no_kpm/*
       
       - name: 应用KPM补丁
@@ -463,7 +456,7 @@ jobs:
         if: ${{ github.event.inputs.KPM == 'true' }}
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.KPM_NAME }}
+          name: AnyKernel3_SukiSU_Ultra_${{ env.FEIL_NAME }}_KPM${{ env.ZRAM_SUFFIX }}_${{ env.BUILD_DATE }}
           path: AnyKernel3-kpm/*
       
       - name: 提取ZRAM相关模块
