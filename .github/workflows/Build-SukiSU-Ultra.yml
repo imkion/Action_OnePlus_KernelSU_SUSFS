@@ -112,6 +112,7 @@ on:
         default: true
 jobs:
   build:
+    name: ${{ github.event.inputs.FEIL }}_${{ github.event.inputs.KPM == 'true' && 'KPM' || 'NoKPM' }}_${{ github.event.inputs.ZRAM == 'true' && 'lz4kd' || '' }}
     runs-on: ubuntu-latest
     env:
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
