@@ -150,7 +150,7 @@ jobs:
       - name: 配置APT缓存
         run: |
           # 设置APT缓存目录 #
-          echo "APT_CACHE_DIR=$HOME/apt-cache" >> $GITHUB_ENV
+          APT_CACHE_DIR="$HOME/apt-cache"
           mkdir -p "$APT_CACHE_DIR"/{archives,lists/partial}
           # 创建APT配置文件
           echo "Dir::Cache \"$APT_CACHE_DIR\";" | sudo tee /etc/apt/apt.conf.d/90user-cache
