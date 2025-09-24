@@ -4,13 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       clean_success:
-        description: '是否清除成功记录（true/false，默认false）'
+        description: '是否清除成功记录'
         required: false
-        default: 'false'
+        default: false
+        type: boolean
       keep_latest:
         description: '保留最近N条记录（默认0）'
         required: false
-        default: '0'
+        default: 0
+        type: number
 
 jobs:
   cleanup:
@@ -21,15 +23,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install gh -y
 
-      - name: 登录 GitHub CLI
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo $GH_TOKEN | gh auth login --with-token
-
       - name: 清理 Workflow Runs
         env:
           CLEAN_SUCCESS: ${{ github.event.inputs.clean_success }}
           KEEP_LATEST: ${{ github.event.inputs.keep_latest }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # 获取所有 workflow IDs
           workflows=$(gh workflow list --json id -q '.[] | .id')
