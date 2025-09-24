@@ -14,7 +14,7 @@ on:
         default: 0
         type: number
       workflow_file:
-        description: '指定要清理的 workflow 文件名（如 Build-SukiSU-Ultra-lz4kd.yml，留空为全部）'
+        description: '指定要清理的 workflow 文件名（如 extract-oplus-build-kernel-scripts.yml，留空为全部）'
         required: false
         default: ''
 
@@ -54,7 +54,8 @@ jobs:
             mapfile -t workflow_lines < <(gh workflow list --repo "$REPO" --json id,path,name -q '.[] | "\(.id):\(.path):\(.name)"')
           else
             info "仅清理 workflow 文件: $WORKFLOW_FILE"
-            mapfile -t workflow_lines < <(gh workflow list --repo "$REPO" --json id,path,name -q '.[] | select(.path | endswith("/" + "'"$WORKFLOW_FILE"'")) | "\(.id):\(.path):\(.name)"')
+            # 直接用 endswith 匹配文件名，避免路径拼接问题
+            mapfile -t workflow_lines < <(gh workflow list --repo "$REPO" --json id,path,name -q '.[] | select(.path | endswith("'"$WORKFLOW_FILE"'")) | "\(.id):\(.path):\(.name)"')
           fi
 
           if [ "${#workflow_lines[@]}" -eq 0 ]; then
