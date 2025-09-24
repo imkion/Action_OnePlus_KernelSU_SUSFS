@@ -3,6 +3,10 @@ name: Cleanup Workflow Runs
 on:
   workflow_dispatch:
     inputs:
+      run_name_contains:
+        description: '指定要清理的 workflow 名称包含内容（如 extract-oplus-build-kernel-scripts，留空为全部）'
+        required: false
+        default: ''
       clean_success:
         description: '是否清理成功的记录'
         required: false
@@ -13,10 +17,6 @@ on:
         required: false
         default: 0
         type: number
-      workflow_file:
-        description: '指定要清理的 workflow 文件名（如 extract-oplus-build-kernel-scripts.yml，留空为全部）'
-        required: false
-        default: ''
 
 jobs:
   cleanup:
@@ -30,72 +30,64 @@ jobs:
           sudo apt-get update
           sudo apt-get install gh -y
 
-      - name: 清理 Workflow Runs
+      - name: 清理 Workflow Runs（支持无文件历史）
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN != '' && secrets.PAT_TOKEN || github.token }}
+          RUN_NAME_CONTAINS: ${{ github.event.inputs.run_name_contains }}
           CLEAN_SUCCESS: ${{ github.event.inputs.clean_success }}
           KEEP_LATEST: ${{ github.event.inputs.keep_latest }}
-          WORKFLOW_FILE: ${{ github.event.inputs.workflow_file }}
         run: |
           info()   { echo -e "\033[1;34m[INFO]\033[0m $*"; }
           warn()   { echo -e "\033[1;33m[WARN]\033[0m $*"; }
           error()  { echo -e "\033[1;31m[ERROR]\033[0m $*"; }
 
-          info "Workflow Runs Cleanup Started"
+          info "Advanced Workflow Runs Cleanup Started"
           info "GH_TOKEN 使用: $([ -n "${GH_TOKEN}" ] && echo '自定义 PAT_TOKEN' || echo '默认 github.token')"
-          info "参数: clean_success=${CLEAN_SUCCESS} keep_latest=${KEEP_LATEST} workflow_file=${WORKFLOW_FILE}"
+          info "参数: run_name_contains=${RUN_NAME_CONTAINS} clean_success=${CLEAN_SUCCESS} keep_latest=${KEEP_LATEST}"
 
           REPO="${{ github.repository }}"
           info "当前仓库：$REPO"
 
-          # 获取 workflow id 和 path
-          if [ -z "$WORKFLOW_FILE" ]; then
-            info "选择全部 workflow 清理"
-            mapfile -t workflow_lines < <(gh workflow list --repo "$REPO" --json id,path,name -q '.[] | "\(.id):\(.path):\(.name)"')
+          # 获取全部 completed runs（包括无文件的，最多 1000 条）
+          mapfile -t run_lines < <(gh run list --repo "$REPO" --status completed --limit 1000 --json databaseId,name,conclusion,createdAt,headBranch -q '.[] | "\(.databaseId):\(.name):\(.conclusion):\(.createdAt):\(.headBranch)"')
+
+          # 按名称筛选（如果填写了 run_name_contains）
+          filtered_run_lines=()
+          if [ -z "$RUN_NAME_CONTAINS" ]; then
+            info "未指定名称筛选，处理全部 completed runs"
+            filtered_run_lines=("${run_lines[@]}")
           else
-            info "仅清理 workflow 文件: $WORKFLOW_FILE"
-            # 直接用 endswith 匹配文件名，避免路径拼接问题
-            mapfile -t workflow_lines < <(gh workflow list --repo "$REPO" --json id,path,name -q '.[] | select(.path | endswith("'"$WORKFLOW_FILE"'")) | "\(.id):\(.path):\(.name)"')
-          fi
-
-          if [ "${#workflow_lines[@]}" -eq 0 ]; then
-            warn "没有检测到匹配的 workflow，终止"
-            exit 0
-          fi
-
-          info "发现 ${#workflow_lines[@]} 个 workflow"
-          for workflow_line in "${workflow_lines[@]}"; do
-            wf="${workflow_line%%:*}"
-            rest="${workflow_line#*:}"
-            wf_path="${rest%%:*}"
-            wf_name="${rest#*:}"
-            info "处理 workflow: $wf_name ($wf) 文件路径: $wf_path"
-
-            mapfile -t run_lines < <(gh run list --repo "$REPO" --workflow "$wf" --status completed --limit 1000 --json databaseId,conclusion,createdAt,headBranch -q '.[] | "\(.databaseId):\(.conclusion):\(.createdAt):\(.headBranch)"')
-            total_runs="${#run_lines[@]}"
-            info "发现 $total_runs 条 completed 记录"
-
-            count=0
-            for ((i=total_runs-1; i>=0; i--)); do
-              IFS=: read -r run_id conclusion created branch <<<"${run_lines[i]}"
-              count=$((count+1))
-              if [ "$count" -le "$KEEP_LATEST" ]; then
-                info "保留第 $count 条记录 run_id=$run_id branch=$branch created=$created 结论=$conclusion"
-                continue
-              fi
-
-              if [ "$CLEAN_SUCCESS" = "false" ] && [ "$conclusion" = "success" ]; then
-                info "跳过成功 run: run_id=$run_id"
-                continue
-              fi
-
-              info "尝试删除: run_id=$run_id branch=$branch created=$created 结论=$conclusion"
-              if gh run delete "$run_id" --repo "$REPO"; then
-                info "已删除 run $run_id"
-              else
-                error "删除 run $run_id 失败"
+            info "仅处理名称包含 '${RUN_NAME_CONTAINS}' 的 runs"
+            for line in "${run_lines[@]}"; do
+              if [[ "$line" == *"$RUN_NAME_CONTAINS"* ]]; then
+                filtered_run_lines+=("$line")
               fi
             done
+          fi
+
+          total_runs="${#filtered_run_lines[@]}"
+          info "发现 $total_runs 条待处理的 completed run 记录"
+
+          count=0
+          for ((i=total_runs-1; i>=0; i--)); do
+            IFS=: read -r run_id run_name conclusion created branch <<<"${filtered_run_lines[i]}"
+            count=$((count+1))
+            if [ "$count" -le "$KEEP_LATEST" ]; then
+              info "保留第 $count 条记录 run_id=$run_id name=$run_name branch=$branch created=$created 结论=$conclusion"
+              continue
+            fi
+
+            if [ "$CLEAN_SUCCESS" = "false" ] && [ "$conclusion" = "success" ]; then
+              info "跳过成功 run: run_id=$run_id name=$run_name"
+              continue
+            fi
+
+            info "尝试删除: run_id=$run_id name=$run_name branch=$branch created=$created 结论=$conclusion"
+            if gh run delete "$run_id" --repo "$REPO"; then
+              info "已删除 run $run_id"
+            else
+              error "删除 run $run_id 失败"
+            fi
           done
 
-          info "Workflow Runs Cleanup Finished"
+          info "Advanced Workflow Runs Cleanup Finished"
