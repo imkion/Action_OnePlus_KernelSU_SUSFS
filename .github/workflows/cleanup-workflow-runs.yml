@@ -25,29 +25,30 @@ jobs:
 
       - name: 清理 Workflow Runs
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CLEAN_SUCCESS: ${{ github.event.inputs.clean_success }}
           KEEP_LATEST: ${{ github.event.inputs.keep_latest }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # 设置要清理的状态
+          if [ "${CLEAN_SUCCESS}" = "true" ]; then
+            STATUS="completed"
+          else
+            STATUS="failure"
+          fi
+
           # 获取所有 workflow IDs
           workflows=$(gh workflow list --json id -q '.[] | .id')
           for wf in $workflows; do
-            # 获取 workflow runs
-            if [ "$CLEAN_SUCCESS" = "true" ]; then
-              status="completed"
-            else
-              status="failure"
-            fi
-
-            # 获取 runs, 按时间倒序
-            runs=$(gh run list --workflow $wf --status $status --json databaseId,status,conclusion,createdAt -q '.[] | .databaseId' | tac)
+            # 获取指定状态的 runs（最新的在最前面）
+            runs=$(gh run list --workflow "$wf" --status "$STATUS" --json databaseId -q '.[] | .databaseId')
+            # 保留最近 KEEP_LATEST 条
             count=0
             for run_id in $runs; do
               count=$((count+1))
-              if [ "$KEEP_LATEST" -gt 0 ] && [ $count -le $KEEP_LATEST ]; then
+              if [ "$count" -le "$KEEP_LATEST" ]; then
                 continue
               fi
               echo "Deleting run $run_id"
-              gh run delete $run_id --confirm
+              gh run delete "$run_id" --confirm
             done
           done
