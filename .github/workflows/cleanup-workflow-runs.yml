@@ -43,21 +43,46 @@ jobs:
           REPO="${{ github.repository }}"
           info "当前仓库：$REPO"
 
-          workflows=$(gh workflow list --repo "$REPO" --json id,name -q '.[] | "\(.id):\(.name)"')
-          if [ -z "$workflows" ]; then
+          # 获取所有 workflow IDs+name
+          mapfile -t workflow_lines < <(gh workflow list --repo "$REPO" --json id,name -q '.[] | "\(.id):\(.name)"')
+          if [ "${#workflow_lines[@]}" -eq 0 ]; then
             warn "没有检测到 workflow，终止"
             exit 0
           fi
 
-          info "发现 $(echo "$workflows" | wc -l) 个 workflow"
-          echo "$workflows" | while IFS=: read -r wf wf_name; do
+          info "发现 ${#workflow_lines[@]} 个 workflow"
+          for workflow_line in "${workflow_lines[@]}"; do
+            wf="${workflow_line%%:*}"
+            wf_name="${workflow_line#*:}"
             info "处理 workflow: $wf_name ($wf)"
 
             # 获取所有已完成的 runs（包括 success, failure, cancelled, timed_out 等），限制最多 1000 条
-            runs=$(gh run list --repo "$REPO" --workflow "$wf" --status completed --limit 1000 --json databaseId,conclusion,createdAt,headBranch -q '.[] | "\(.databaseId):\(.conclusion):\(.createdAt):\(.headBranch)"')
-            total_runs=$(echo "$runs" | wc -l)
+            mapfile -t run_lines < <(gh run list --repo "$REPO" --workflow "$wf" --status completed --limit 1000 --json databaseId,conclusion,createdAt,headBranch -q '.[] | "\(.databaseId):\(.conclusion):\(.createdAt):\(.headBranch)"')
+            total_runs="${#run_lines[@]}"
             info "发现 $total_runs 条 completed 记录"
 
             count=0
-            echo "$runs" | tac | while IFS=: read -r run_id conclusion created branch; do
-              count
+            for ((i=total_runs-1; i>=0; i--)); do
+              IFS=: read -r run_id conclusion created branch <<<"${run_lines[i]}"
+              count=$((count+1))
+              if [ "$count" -le "$KEEP_LATEST" ]; then
+                info "保留第 $count 条记录 run_id=$run_id branch=$branch created=$created 结论=$conclusion"
+                continue
+              fi
+
+              # 是否清理成功 run
+              if [ "$CLEAN_SUCCESS" = "false" ] && [ "$conclusion" = "success" ]; then
+                info "跳过成功 run: run_id=$run_id"
+                continue
+              fi
+
+              info "尝试删除: run_id=$run_id branch=$branch created=$created 结论=$conclusion"
+              if gh run delete "$run_id" --repo "$REPO"; then
+                info "已删除 run $run_id"
+              else
+                error "删除 run $run_id 失败"
+              fi
+            done
+          done
+
+          info "Workflow Runs Cleanup Finished"
