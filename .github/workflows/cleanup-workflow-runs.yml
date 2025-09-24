@@ -32,29 +32,17 @@ jobs:
           CLEAN_SUCCESS: ${{ github.event.inputs.clean_success }}
           KEEP_LATEST: ${{ github.event.inputs.keep_latest }}
         run: |
-          # 彩色输出函数
           info()   { echo -e "\033[1;34m[INFO]\033[0m $*"; }
           warn()   { echo -e "\033[1;33m[WARN]\033[0m $*"; }
           error()  { echo -e "\033[1;31m[ERROR]\033[0m $*"; }
 
-          # 阶段日志
           info "Workflow Runs Cleanup Started"
           info "GH_TOKEN 使用: $([ -n "${GH_TOKEN}" ] && echo '自定义 PAT_TOKEN' || echo '默认 github.token')"
           info "参数: clean_success=${CLEAN_SUCCESS} keep_latest=${KEEP_LATEST}"
 
-          # 设置要清理的状态
-          if [ "${CLEAN_SUCCESS}" = "true" ]; then
-            STATUS="completed"
-            info "目标：清理已完成（成功）记录"
-          else
-            STATUS="failure"
-            info "目标：清理失败记录"
-          fi
-
           REPO="${{ github.repository }}"
           info "当前仓库：$REPO"
 
-          # 获取所有 workflow IDs
           workflows=$(gh workflow list --repo "$REPO" --json id,name -q '.[] | "\(.id):\(.name)"')
           if [ -z "$workflows" ]; then
             warn "没有检测到 workflow，终止"
@@ -65,25 +53,11 @@ jobs:
           echo "$workflows" | while IFS=: read -r wf wf_name; do
             info "处理 workflow: $wf_name ($wf)"
 
-            # 获取指定状态的 runs
-            runs=$(gh run list --repo "$REPO" --workflow "$wf" --status "$STATUS" --json databaseId,createdAt,headBranch -q '.[] | "\(.databaseId):\(.createdAt):\(.headBranch)"')
+            # 获取所有已完成的 runs（包括 success, failure, cancelled, timed_out 等），限制最多 1000 条
+            runs=$(gh run list --repo "$REPO" --workflow "$wf" --status completed --limit 1000 --json databaseId,conclusion,createdAt,headBranch -q '.[] | "\(.databaseId):\(.conclusion):\(.createdAt):\(.headBranch)"')
             total_runs=$(echo "$runs" | wc -l)
-            info "发现 $total_runs 条 ${STATUS} 记录"
+            info "发现 $total_runs 条 completed 记录"
 
             count=0
-            echo "$runs" | while IFS=: read -r run_id created branch; do
-              count=$((count+1))
-              if [ "$count" -le "$KEEP_LATEST" ]; then
-                info "保留第 $count 条记录 run_id=$run_id branch=$branch created=$created"
-                continue
-              fi
-              info "尝试删除: run_id=$run_id branch=$branch created=$created"
-              if gh run delete "$run_id" --repo "$REPO"; then
-                info "已删除 run $run_id"
-              else
-                error "删除 run $run_id 失败"
-              fi
-            done
-          done
-
-          info "Workflow Runs Cleanup Finished"
+            echo "$runs" | tac | while IFS=: read -r run_id conclusion created branch; do
+              count
