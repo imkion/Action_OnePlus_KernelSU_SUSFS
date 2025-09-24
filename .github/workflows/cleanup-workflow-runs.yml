@@ -28,7 +28,7 @@ jobs:
 
       - name: 清理 Workflow Runs
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN != '' && secrets.PAT_TOKEN || github.token }}
           CLEAN_SUCCESS: ${{ github.event.inputs.clean_success }}
           KEEP_LATEST: ${{ github.event.inputs.keep_latest }}
         run: |
