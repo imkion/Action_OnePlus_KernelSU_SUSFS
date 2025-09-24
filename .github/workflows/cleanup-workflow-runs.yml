@@ -18,6 +18,9 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: 安装 GitHub CLI
         run: |
           sudo apt-get update
@@ -36,12 +39,13 @@ jobs:
             STATUS="failure"
           fi
 
+          REPO="${{ github.repository }}"
+
           # 获取所有 workflow IDs
-          workflows=$(gh workflow list --json id -q '.[] | .id')
+          workflows=$(gh workflow list --repo "$REPO" --json id -q '.[] | .id')
           for wf in $workflows; do
             # 获取指定状态的 runs（最新的在最前面）
-            runs=$(gh run list --workflow "$wf" --status "$STATUS" --json databaseId -q '.[] | .databaseId')
-            # 保留最近 KEEP_LATEST 条
+            runs=$(gh run list --repo "$REPO" --workflow "$wf" --status "$STATUS" --json databaseId -q '.[] | .databaseId')
             count=0
             for run_id in $runs; do
               count=$((count+1))
@@ -49,6 +53,6 @@ jobs:
                 continue
               fi
               echo "Deleting run $run_id"
-              gh run delete "$run_id" --confirm
+              gh run delete "$run_id" --repo "$REPO" --confirm
             done
           done
