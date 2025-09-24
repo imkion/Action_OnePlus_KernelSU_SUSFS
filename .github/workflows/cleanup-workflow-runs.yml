@@ -53,6 +53,6 @@ jobs:
                 continue
               fi
               echo "Deleting run $run_id"
-              gh run delete "$run_id" --repo "$REPO" --confirm
+              gh run delete "$run_id" --repo "$REPO" --yes
             done
           done
