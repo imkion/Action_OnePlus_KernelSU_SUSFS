@@ -41,6 +41,7 @@ on:
           - oneplus_11r_v
           - oneplus_12r_v
           - oneplus_13
+          - oneplus_13_global
           - oneplus_13r
           - oneplus_13s
           - oneplus_13t
